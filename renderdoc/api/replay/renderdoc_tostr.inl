@@ -52,7 +52,7 @@ rdcstr DoStringise(const ResultCode &el)
     STRINGISE_ENUM_CLASS_NAMED(UnknownError, "Unknown error");
     STRINGISE_ENUM_CLASS_NAMED(InternalError, "Internal error");
     STRINGISE_ENUM_CLASS_NAMED(FileNotFound, "File not found");
-    STRINGISE_ENUM_CLASS_NAMED(InjectionFailed, "RenderDoc injection failed");
+    STRINGISE_ENUM_CLASS_NAMED(InjectionFailed, "GfxCore injection failed");
     STRINGISE_ENUM_CLASS_NAMED(IncompatibleProcess,
                                "Process is incompatible with this build of RenderDoc");
     STRINGISE_ENUM_CLASS_NAMED(NetworkIOFailed, "Network I/O operation failed");

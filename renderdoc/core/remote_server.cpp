@@ -1278,7 +1278,7 @@ void RenderDoc::BecomeRemoteServer(const rdcstr &listenhost, uint16_t port,
 }
 
 extern "C" RENDERDOC_API ResultDetails RENDERDOC_CC
-RENDERDOC_CreateRemoteServerConnection(const rdcstr &URL, IRemoteServer **rend)
+GC_CreateRemoteServerConnection(const rdcstr &URL, IRemoteServer **rend)
 {
   rdcstr host = "localhost";
   if(!URL.empty())
@@ -1395,9 +1395,9 @@ RENDERDOC_CreateRemoteServerConnection(const rdcstr &URL, IRemoteServer **rend)
 }
 
 extern "C" RENDERDOC_API ResultDetails RENDERDOC_CC
-RENDERDOC_CheckRemoteServerConnection(const rdcstr &URL)
+GC_CheckRemoteServerConnection(const rdcstr &URL)
 {
-  return RENDERDOC_CreateRemoteServerConnection(URL, NULL);
+  return GC_CreateRemoteServerConnection(URL, NULL);
 }
 
 #undef WRITE_DATA_SCOPE

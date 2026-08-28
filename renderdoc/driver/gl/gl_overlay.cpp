@@ -515,7 +515,7 @@ ResourceId GLReplay::RenderOverlay(ResourceId texid, FloatVector clearCol, Debug
     overlayFixedColLocation = 99;
   else
     overlayFixedColLocation =
-        drv.glGetUniformLocation(DebugData.overlayProg, "RENDERDOC_Fixed_Color");
+        drv.glGetUniformLocation(DebugData.overlayProg, "GC_Fixed_Color");
 
   WrappedOpenGL::TextureData &texDetails = m_pDriver->m_Textures[texid];
 
@@ -1401,7 +1401,7 @@ ResourceId GLReplay::RenderOverlay(ResourceId texid, FloatVector clearCol, Debug
       GLint fixedColLocation = 99;
       if(!spirvOverlay)
         fixedColLocation =
-            drv.glGetUniformLocation(DebugData.fullScreenFixedColProg, "RENDERDOC_Fixed_Color");
+            drv.glGetUniformLocation(DebugData.fullScreenFixedColProg, "GC_Fixed_Color");
       drv.glProgramUniform4fv(DebugData.fullScreenFixedColProg, fixedColLocation, 1, green);
 
       drv.glDisable(eGL_BLEND);

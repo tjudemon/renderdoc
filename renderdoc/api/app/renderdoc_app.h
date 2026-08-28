@@ -851,7 +851,7 @@ typedef RENDERDOC_API_1_7_0 RENDERDOC_API_1_6_0;
 //
 // This entry point can be obtained via GetProcAddress/dlsym if RenderDoc is available.
 //
-// The name is the same as the typedef - "RENDERDOC_GetAPI"
+// The name is the same as the typedef - "GC_GetAPI"
 //
 // This function is not thread safe, and should not be called on multiple threads at once.
 // Ideally, call this once as early as possible in your application's startup, before doing

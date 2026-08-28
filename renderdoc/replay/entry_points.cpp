@@ -64,7 +64,7 @@ RDResult::operator ResultDetails() const
 
 // these entry points are for the replay/analysis side - not for the application.
 
-extern "C" RENDERDOC_API uint32_t RENDERDOC_CC RENDERDOC_NumVerticesPerPrimitive(Topology topology)
+extern "C" RENDERDOC_API uint32_t RENDERDOC_CC GC_NumVerticesPerPrimitive(Topology topology)
 {
   // strips/loops/fans have the same number of indices for a single primitive
   // as their list friends
@@ -120,7 +120,7 @@ extern "C" RENDERDOC_API uint32_t RENDERDOC_CC RENDERDOC_NumVerticesPerPrimitive
   return 0;
 }
 
-extern "C" RENDERDOC_API uint32_t RENDERDOC_CC RENDERDOC_VertexOffset(Topology topology,
+extern "C" RENDERDOC_API uint32_t RENDERDOC_CC GC_VertexOffset(Topology topology,
                                                                       uint32_t primitive)
 {
   // strips/loops/fans have the same number of indices for a single primitive
@@ -181,30 +181,30 @@ extern "C" RENDERDOC_API uint32_t RENDERDOC_CC RENDERDOC_VertexOffset(Topology t
       return primitive * 2;
   }
 
-  return primitive * RENDERDOC_NumVerticesPerPrimitive(topology);
+  return primitive * GC_NumVerticesPerPrimitive(topology);
 }
 
-extern "C" RENDERDOC_API float RENDERDOC_CC RENDERDOC_HalfToFloat(uint16_t half)
+extern "C" RENDERDOC_API float RENDERDOC_CC GC_HalfToFloat(uint16_t half)
 {
   return ConvertFromHalf(half);
 }
 
-extern "C" RENDERDOC_API uint16_t RENDERDOC_CC RENDERDOC_FloatToHalf(float f)
+extern "C" RENDERDOC_API uint16_t RENDERDOC_CC GC_FloatToHalf(float f)
 {
   return ConvertToHalf(f);
 }
 
-extern "C" RENDERDOC_API ICamera *RENDERDOC_CC RENDERDOC_InitCamera(CameraType type)
+extern "C" RENDERDOC_API ICamera *RENDERDOC_CC GC_InitCamera(CameraType type)
 {
   return new Camera(type);
 }
 
-extern "C" RENDERDOC_API const char *RENDERDOC_CC RENDERDOC_GetVersionString()
+extern "C" RENDERDOC_API const char *RENDERDOC_CC GC_GetVersionString()
 {
   return MAJOR_MINOR_VERSION_STRING;
 }
 
-extern "C" RENDERDOC_API bool RENDERDOC_CC RENDERDOC_IsReleaseBuild()
+extern "C" RENDERDOC_API bool RENDERDOC_CC GC_IsReleaseBuild()
 {
 #if ENABLED(RDOC_RELEASE)
   return true;
@@ -213,37 +213,37 @@ extern "C" RENDERDOC_API bool RENDERDOC_CC RENDERDOC_IsReleaseBuild()
 #endif
 }
 
-extern "C" RENDERDOC_API const char *RENDERDOC_CC RENDERDOC_GetCommitHash()
+extern "C" RENDERDOC_API const char *RENDERDOC_CC GC_GetCommitHash()
 {
   return GitVersionHash;
 }
 
-extern "C" RENDERDOC_API DriverInformation RENDERDOC_CC RENDERDOC_GetDriverInformation(GraphicsAPI api)
+extern "C" RENDERDOC_API DriverInformation RENDERDOC_CC GC_GetDriverInformation(GraphicsAPI api)
 {
   return RenderDoc::Inst().GetDriverInformation(api);
 }
 
-extern "C" RENDERDOC_API uint64_t RENDERDOC_CC RENDERDOC_GetCurrentProcessMemoryUsage()
+extern "C" RENDERDOC_API uint64_t RENDERDOC_CC GC_GetCurrentProcessMemoryUsage()
 {
   return Process::GetMemoryUsage();
 }
 
-extern "C" RENDERDOC_API const SDObject *RENDERDOC_CC RENDERDOC_GetConfigSetting(const rdcstr &name)
+extern "C" RENDERDOC_API const SDObject *RENDERDOC_CC GC_GetConfigSetting(const rdcstr &name)
 {
   return RenderDoc::Inst().GetConfigSetting(name);
 }
 
-extern "C" RENDERDOC_API SDObject *RENDERDOC_CC RENDERDOC_SetConfigSetting(const rdcstr &name)
+extern "C" RENDERDOC_API SDObject *RENDERDOC_CC GC_SetConfigSetting(const rdcstr &name)
 {
   return RenderDoc::Inst().SetConfigSetting(name);
 }
 
-extern "C" RENDERDOC_API void RENDERDOC_CC RENDERDOC_SaveConfigSettings()
+extern "C" RENDERDOC_API void RENDERDOC_CC GC_SaveConfigSettings()
 {
   return RenderDoc::Inst().SaveConfigSettings();
 }
 
-extern "C" RENDERDOC_API void RENDERDOC_CC RENDERDOC_SetColors(FloatVector darkChecker,
+extern "C" RENDERDOC_API void RENDERDOC_CC GC_SetColors(FloatVector darkChecker,
                                                                FloatVector lightChecker,
                                                                bool darkTheme)
 {
@@ -252,7 +252,7 @@ extern "C" RENDERDOC_API void RENDERDOC_CC RENDERDOC_SetColors(FloatVector darkC
   RenderDoc::Inst().SetDarkTheme(darkTheme);
 }
 
-extern "C" RENDERDOC_API void RENDERDOC_CC RENDERDOC_SetDebugLogFile(const rdcstr &log)
+extern "C" RENDERDOC_API void RENDERDOC_CC GC_SetDebugLogFile(const rdcstr &log)
 {
   if(!log.empty())
   {
@@ -263,7 +263,7 @@ extern "C" RENDERDOC_API void RENDERDOC_CC RENDERDOC_SetDebugLogFile(const rdcst
   }
 }
 
-extern "C" RENDERDOC_API void RENDERDOC_CC RENDERDOC_LogMessage(LogType type, const rdcstr &project,
+extern "C" RENDERDOC_API void RENDERDOC_CC GC_LogMessage(LogType type, const rdcstr &project,
                                                                 const rdcstr &file,
                                                                 unsigned int line, const rdcstr &text)
 {
@@ -294,24 +294,24 @@ extern "C" RENDERDOC_API void RENDERDOC_CC RENDERDOC_LogMessage(LogType type, co
     RDCDUMP();
 }
 
-extern "C" RENDERDOC_API const char *RENDERDOC_CC RENDERDOC_GetLogFile()
+extern "C" RENDERDOC_API const char *RENDERDOC_CC GC_GetLogFile()
 {
   return RDCGETLOGFILE();
 }
 
-extern "C" RENDERDOC_API void RENDERDOC_CC RENDERDOC_GetLogFileContents(uint64_t offset,
+extern "C" RENDERDOC_API void RENDERDOC_CC GC_GetLogFileContents(uint64_t offset,
                                                                         rdcstr &logfile)
 {
   logfile = FileIO::logfile_readall(offset, RDCGETLOGFILE());
 }
 
-extern "C" RENDERDOC_API void RENDERDOC_CC RENDERDOC_InitialiseReplay(GlobalEnvironment env,
+extern "C" RENDERDOC_API void RENDERDOC_CC GC_InitialiseReplay(GlobalEnvironment env,
                                                                       const rdcarray<rdcstr> &args)
 {
   RenderDoc::Inst().InitialiseReplay(env, args);
 }
 
-extern "C" RENDERDOC_API void RENDERDOC_CC RENDERDOC_ShutdownReplay()
+extern "C" RENDERDOC_API void RENDERDOC_CC GC_ShutdownReplay()
 {
   {
     SCOPED_LOCK(detailStringLock);
@@ -323,7 +323,7 @@ extern "C" RENDERDOC_API void RENDERDOC_CC RENDERDOC_ShutdownReplay()
   RenderDoc::Inst().ShutdownReplay();
 }
 
-extern "C" RENDERDOC_API void RENDERDOC_CC RENDERDOC_CreateBugReport(const rdcstr &logfile,
+extern "C" RENDERDOC_API void RENDERDOC_CC GC_CreateBugReport(const rdcstr &logfile,
                                                                      const rdcstr &dumpfile,
                                                                      rdcstr &report)
 {
@@ -353,18 +353,18 @@ extern "C" RENDERDOC_API void RENDERDOC_CC RENDERDOC_CreateBugReport(const rdcst
   mz_zip_writer_end(&zip);
 }
 
-extern "C" RENDERDOC_API void RENDERDOC_CC RENDERDOC_RegisterMemoryRegion(void *base, size_t size)
+extern "C" RENDERDOC_API void RENDERDOC_CC GC_RegisterMemoryRegion(void *base, size_t size)
 {
   RenderDoc::Inst().RegisterMemoryRegion(base, size);
 }
 
-extern "C" RENDERDOC_API void RENDERDOC_CC RENDERDOC_UnregisterMemoryRegion(void *base)
+extern "C" RENDERDOC_API void RENDERDOC_CC GC_UnregisterMemoryRegion(void *base)
 {
   RenderDoc::Inst().UnregisterMemoryRegion(base);
 }
 
 extern "C" RENDERDOC_API ExecuteResult RENDERDOC_CC
-RENDERDOC_ExecuteAndInject(const rdcstr &app, const rdcstr &workingDir, const rdcstr &cmdLine,
+GC_ExecuteAndInject(const rdcstr &app, const rdcstr &workingDir, const rdcstr &cmdLine,
                            const rdcarray<EnvironmentModification> &env, const rdcstr &capturefile,
                            const CaptureOptions &opts, bool waitForExit)
 {
@@ -377,29 +377,29 @@ RENDERDOC_ExecuteAndInject(const rdcstr &app, const rdcstr &workingDir, const rd
   return ret;
 }
 
-extern "C" RENDERDOC_API ResultDetails RENDERDOC_CC RENDERDOC_StartGlobalHook(
+extern "C" RENDERDOC_API ResultDetails RENDERDOC_CC GC_StartGlobalHook(
     const rdcstr &pathmatch, const rdcstr &capturefile, const CaptureOptions &opts)
 {
   return Process::StartGlobalHook(pathmatch, capturefile, opts);
 }
 
-extern "C" RENDERDOC_API void RENDERDOC_CC RENDERDOC_StopGlobalHook()
+extern "C" RENDERDOC_API void RENDERDOC_CC GC_StopGlobalHook()
 {
   Process::StopGlobalHook();
 }
 
-extern "C" RENDERDOC_API bool RENDERDOC_CC RENDERDOC_IsGlobalHookActive()
+extern "C" RENDERDOC_API bool RENDERDOC_CC GC_IsGlobalHookActive()
 {
   return Process::IsGlobalHookActive();
 }
 
-extern "C" RENDERDOC_API bool RENDERDOC_CC RENDERDOC_CanGlobalHook()
+extern "C" RENDERDOC_API bool RENDERDOC_CC GC_CanGlobalHook()
 {
   return Process::CanGlobalHook();
 }
 
 extern "C" RENDERDOC_API ExecuteResult RENDERDOC_CC
-RENDERDOC_InjectIntoProcess(uint32_t pid, const rdcarray<EnvironmentModification> &env,
+GC_InjectIntoProcess(uint32_t pid, const rdcarray<EnvironmentModification> &env,
                             const rdcstr &capturefile, const CaptureOptions &opts, bool waitForExit)
 {
   rdcpair<RDResult, uint32_t> status =
@@ -411,7 +411,7 @@ RENDERDOC_InjectIntoProcess(uint32_t pid, const rdcarray<EnvironmentModification
   return ret;
 }
 
-extern "C" RENDERDOC_API void RENDERDOC_CC RENDERDOC_FreeArrayMem(void *mem)
+extern "C" RENDERDOC_API void RENDERDOC_CC GC_FreeArrayMem(void *mem)
 {
   free(mem);
 }
@@ -422,7 +422,7 @@ void RENDERDOC_OutOfMemory(uint64_t sz)
   RDCFATAL("Allocation failed for %llu bytes", sz);
 }
 
-extern "C" RENDERDOC_API void *RENDERDOC_CC RENDERDOC_AllocArrayMem(uint64_t sz)
+extern "C" RENDERDOC_API void *RENDERDOC_CC GC_AllocArrayMem(uint64_t sz)
 {
   void *ret = malloc((size_t)sz);
   if(ret == NULL)
@@ -430,7 +430,7 @@ extern "C" RENDERDOC_API void *RENDERDOC_CC RENDERDOC_AllocArrayMem(uint64_t sz)
   return ret;
 }
 
-extern "C" RENDERDOC_API uint32_t RENDERDOC_CC RENDERDOC_EnumerateRemoteTargets(const rdcstr &URL,
+extern "C" RENDERDOC_API uint32_t RENDERDOC_CC GC_EnumerateRemoteTargets(const rdcstr &URL,
                                                                                 uint32_t nextIdent)
 {
   rdcstr host = "localhost";
@@ -498,18 +498,18 @@ extern "C" RENDERDOC_API uint32_t RENDERDOC_CC RENDERDOC_EnumerateRemoteTargets(
 }
 
 extern "C" RENDERDOC_API void RENDERDOC_CC
-RENDERDOC_GetSupportedDeviceProtocols(rdcarray<rdcstr> *supportedProtocols)
+GC_GetSupportedDeviceProtocols(rdcarray<rdcstr> *supportedProtocols)
 {
   *supportedProtocols = RenderDoc::Inst().GetSupportedDeviceProtocols();
 }
 
 extern "C" RENDERDOC_API IDeviceProtocolController *RENDERDOC_CC
-RENDERDOC_GetDeviceProtocolController(const rdcstr &protocol)
+GC_GetDeviceProtocolController(const rdcstr &protocol)
 {
   return RenderDoc::Inst().GetDeviceProtocol(protocol);
 }
 
-extern "C" RENDERDOC_API void RENDERDOC_CC RENDERDOC_BecomeRemoteServer(
+extern "C" RENDERDOC_API void RENDERDOC_CC GC_BecomeRemoteServer(
     const rdcstr &listenhost, uint16_t port, RENDERDOC_KillCallback killReplay,
     RENDERDOC_PreviewWindowCallback previewWindow)
 {
@@ -531,12 +531,12 @@ extern "C" RENDERDOC_API void RENDERDOC_CC RENDERDOC_BecomeRemoteServer(
                                        killReplay, previewWindow);
 }
 
-extern "C" RENDERDOC_API bool RENDERDOC_CC RENDERDOC_CanSelfHostedCapture(const rdcstr &dllname)
+extern "C" RENDERDOC_API bool RENDERDOC_CC GC_CanSelfHostedCapture(const rdcstr &dllname)
 {
   return Process::IsModuleLoaded(dllname);
 }
 
-extern "C" RENDERDOC_API void RENDERDOC_CC RENDERDOC_StartSelfHostCapture(const rdcstr &dllname)
+extern "C" RENDERDOC_API void RENDERDOC_CC GC_StartSelfHostCapture(const rdcstr &dllname)
 {
   if(!Process::IsModuleLoaded(dllname))
     return;
@@ -547,7 +547,7 @@ extern "C" RENDERDOC_API void RENDERDOC_CC RENDERDOC_StartSelfHostCapture(const 
     return;
 
   pRENDERDOC_GetAPI get =
-      (pRENDERDOC_GetAPI)Process::GetFunctionAddress(module, "RENDERDOC_GetAPI");
+      (pRENDERDOC_GetAPI)Process::GetFunctionAddress(module, "GC_GetAPI");
 
   if(get == NULL)
     return;
@@ -562,7 +562,7 @@ extern "C" RENDERDOC_API void RENDERDOC_CC RENDERDOC_StartSelfHostCapture(const 
   rdoc->StartFrameCapture(NULL, NULL);
 }
 
-extern "C" RENDERDOC_API void RENDERDOC_CC RENDERDOC_EndSelfHostCapture(const rdcstr &dllname)
+extern "C" RENDERDOC_API void RENDERDOC_CC GC_EndSelfHostCapture(const rdcstr &dllname)
 {
   if(!Process::IsModuleLoaded(dllname))
     return;
@@ -573,7 +573,7 @@ extern "C" RENDERDOC_API void RENDERDOC_CC RENDERDOC_EndSelfHostCapture(const rd
     return;
 
   pRENDERDOC_GetAPI get =
-      (pRENDERDOC_GetAPI)Process::GetFunctionAddress(module, "RENDERDOC_GetAPI");
+      (pRENDERDOC_GetAPI)Process::GetFunctionAddress(module, "GC_GetAPI");
 
   if(get == NULL)
     return;
@@ -589,7 +589,7 @@ extern "C" RENDERDOC_API void RENDERDOC_CC RENDERDOC_EndSelfHostCapture(const rd
 }
 
 extern "C" RENDERDOC_API bool RENDERDOC_CC
-RENDERDOC_NeedVulkanLayerRegistration(VulkanLayerRegistrationInfo *info)
+GC_NeedVulkanLayerRegistration(VulkanLayerRegistrationInfo *info)
 {
   VulkanLayerFlags flags = VulkanLayerFlags::NoFlags;
   rdcarray<rdcstr> myJSONs;
@@ -613,12 +613,12 @@ RENDERDOC_NeedVulkanLayerRegistration(VulkanLayerRegistrationInfo *info)
   return ret;
 }
 
-extern "C" RENDERDOC_API void RENDERDOC_CC RENDERDOC_UpdateVulkanLayerRegistration(bool systemLevel)
+extern "C" RENDERDOC_API void RENDERDOC_CC GC_UpdateVulkanLayerRegistration(bool systemLevel)
 {
   RenderDoc::Inst().UpdateVulkanLayerRegistration(systemLevel);
 }
 
-extern "C" RENDERDOC_API void RENDERDOC_CC RENDERDOC_UpdateInstalledVersionNumber()
+extern "C" RENDERDOC_API void RENDERDOC_CC GC_UpdateInstalledVersionNumber()
 {
 #if ENABLED(RDOC_WIN32)
   HKEY key = NULL;
@@ -676,7 +676,7 @@ extern "C" RENDERDOC_API void RENDERDOC_CC RENDERDOC_UpdateInstalledVersionNumbe
         Publisher[0] = 0;
 
       // if this is our key, set the version number
-      if(!strcmp(DisplayName, "RenderDoc") && !strcmp(Publisher, "Baldur Karlsson"))
+      if(!strcmp(DisplayName, "GfxCore") && !strcmp(Publisher, "Graphics Tools"))
       {
         DWORD Version = (RENDERDOC_VERSION_MAJOR << 24) | (RENDERDOC_VERSION_MINOR << 16);
         DWORD VersionMajor = RENDERDOC_VERSION_MAJOR;
@@ -874,7 +874,7 @@ static rdcstr ResourceFormatName(const ResourceFormat &fmt)
   return ret + "_UNKNOWN";
 }
 
-extern "C" RENDERDOC_API void RENDERDOC_CC RENDERDOC_ResourceFormatName(const ResourceFormat &fmt,
+extern "C" RENDERDOC_API void RENDERDOC_CC GC_ResourceFormatName(const ResourceFormat &fmt,
                                                                         rdcstr &name)
 {
   name = ResourceFormatName(fmt);
@@ -886,7 +886,7 @@ static void TestPrintMsg(const rdcstr &msg)
   OSUtility::WriteOutput(OSUtility::Output_StdErr, msg.c_str());
 }
 
-extern "C" RENDERDOC_API int RENDERDOC_CC RENDERDOC_RunFunctionalTests(const rdcarray<rdcstr> &args)
+extern "C" RENDERDOC_API int RENDERDOC_CC GC_RunFunctionalTests(const rdcarray<rdcstr> &args)
 {
 #if ENABLED(RDOC_WIN32)
   const char *moduledir = "/pymodules";
@@ -1025,12 +1025,12 @@ extern "C" RENDERDOC_API int RENDERDOC_CC RENDERDOC_RunFunctionalTests(const rdc
   return mainFunc((int)wideArgStrings.size(), wideArgStrings.data());
 }
 
-extern "C" RENDERDOC_API void RENDERDOC_CC RENDERDOC_BeginProfileRegion(const rdcstr &name)
+extern "C" RENDERDOC_API void RENDERDOC_CC GC_BeginProfileRegion(const rdcstr &name)
 {
   Superluminal::BeginProfileRange(name);
 }
 
-extern "C" RENDERDOC_API void RENDERDOC_CC RENDERDOC_EndProfileRegion()
+extern "C" RENDERDOC_API void RENDERDOC_CC GC_EndProfileRegion()
 {
   Superluminal::EndProfileRange();
 }

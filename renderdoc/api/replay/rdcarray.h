@@ -131,7 +131,7 @@ protected:
     if(ret == NULL)
       RENDERDOC_OutOfMemory(count * sizeof(T));
 #else
-    ret = (T *)RENDERDOC_AllocArrayMem(count * sizeof(T));
+    ret = (T *)GC_AllocArrayMem(count * sizeof(T));
 #endif
     return ret;
   }
@@ -140,7 +140,7 @@ protected:
 #ifdef RENDERDOC_EXPORTS
     free((void *)p);
 #else
-    RENDERDOC_FreeArrayMem((void *)p);
+    GC_FreeArrayMem((void *)p);
 #endif
   }
 

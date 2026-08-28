@@ -39,9 +39,26 @@ ID3DDevice *GetD3D11DeviceIfAlloc(IUnknown *dev)
 class D3D11Hook : LibraryHook
 {
 public:
+  const char *GetName() const override { return "d3d11"; }
+
   void RegisterHooks()
   {
     RDCLOG("Registering D3D11 hooks");
+
+    // Experimental diagnostic (exp I): GFXCAP_NO_D3D11_HOOKS=1 skips the d3d11.dll IAT
+    // hooks (D3D11CreateDevice / D3D11CreateDeviceAndSwapChain). Without them the D3D11
+    // device is never wrapped and frames cannot be captured - this switch only exists to
+    // bisect which IAT hook the anti-cheat reacts to.
+    wchar_t noD3D11Buf[8] = {};
+    bool noD3D11 = false;
+    if(GetEnvironmentVariableW(L"GFXCAP_NO_D3D11_HOOKS", noD3D11Buf, 8) > 0)
+      noD3D11 = (noD3D11Buf[0] == L'1');
+
+    if(noD3D11)
+    {
+      RDCLOG("GFXCAP_NO_D3D11_HOOKS set - skipping D3D11 hooks");
+      return;
+    }
 
     WrappedIDXGISwapChain4::RegisterD3DDeviceCallback(GetD3D11DeviceIfAlloc);
 

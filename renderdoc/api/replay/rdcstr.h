@@ -147,7 +147,7 @@ private:
     if(ret == NULL)
       RENDERDOC_OutOfMemory(count);
 #else
-    ret = (char *)RENDERDOC_AllocArrayMem(count);
+    ret = (char *)GC_AllocArrayMem(count);
 #endif
     return ret;
   }
@@ -156,7 +156,7 @@ private:
 #ifdef RENDERDOC_EXPORTS
     free((void *)p);
 #else
-    RENDERDOC_FreeArrayMem((void *)p);
+    GC_FreeArrayMem((void *)p);
 #endif
   }
 
@@ -966,7 +966,7 @@ class rdcinflexiblestr
     if(ret == NULL)
       RENDERDOC_OutOfMemory(count);
 #else
-    ret = (char *)RENDERDOC_AllocArrayMem(count);
+    ret = (char *)GC_AllocArrayMem(count);
 #endif
     return ret;
   }
@@ -975,7 +975,7 @@ class rdcinflexiblestr
 #ifdef RENDERDOC_EXPORTS
     free((void *)p);
 #else
-    RENDERDOC_FreeArrayMem((void *)p);
+    GC_FreeArrayMem((void *)p);
 #endif
   }
 

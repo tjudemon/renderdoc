@@ -882,32 +882,53 @@ static void InitHookData()
     s_HookData = new CachedHookData;
 
     RDCASSERT(s_HookData->DllHooks.empty());
-    s_HookData->DllHooks["kernel32.dll"].FunctionHooks.push_back(
-        FunctionHook("LoadLibraryA", NULL, &Hooked_LoadLibraryA));
-    s_HookData->DllHooks["kernel32.dll"].FunctionHooks.push_back(
-        FunctionHook("LoadLibraryW", NULL, &Hooked_LoadLibraryW));
-    s_HookData->DllHooks["kernel32.dll"].FunctionHooks.push_back(
-        FunctionHook("LoadLibraryExA", NULL, &Hooked_LoadLibraryExA));
-    s_HookData->DllHooks["kernel32.dll"].FunctionHooks.push_back(
-        FunctionHook("LoadLibraryExW", NULL, &Hooked_LoadLibraryExW));
-    s_HookData->DllHooks["kernel32.dll"].FunctionHooks.push_back(
-        FunctionHook("GetProcAddress", NULL, &Hooked_GetProcAddress));
 
-    for(const char *apiset :
-        {"api-ms-win-core-libraryloader-l1-1-0.dll", "api-ms-win-core-libraryloader-l1-1-1.dll",
-         "api-ms-win-core-libraryloader-l1-1-2.dll", "api-ms-win-core-libraryloader-l1-2-0.dll",
-         "api-ms-win-core-libraryloader-l1-2-1.dll"})
+    // Experimental diagnostic (exp J): GFXCAP_NO_LOADLIB_HOOKS=1 skips the internal
+    // LoadLibrary*/GetProcAddress IAT hooks. These are installed into *every* loaded
+    // module (kernel32 + api-ms-core-libraryloader apisets are imported by nearly
+    // everything), so RegisterHooks() rewrites the import table of most of the process
+    // even when no user hook is relevant. That sweeping IAT rewrite is the most likely
+    // thing an anti-cheat flags. With this set, only the explicitly registered function
+    // hooks (d3d11/dxgi/...) are installed during the initial module sweep.
+    wchar_t noLoadBuf[8] = {};
+    bool noLoadlib = false;
+    if(GetEnvironmentVariableW(L"GFXCAP_NO_LOADLIB_HOOKS", noLoadBuf, 8) > 0)
+      noLoadlib = (noLoadBuf[0] == L'1');
+
+    if(!noLoadlib)
     {
-      s_HookData->DllHooks[apiset].FunctionHooks.push_back(
+      s_HookData->DllHooks["kernel32.dll"].FunctionHooks.push_back(
           FunctionHook("LoadLibraryA", NULL, &Hooked_LoadLibraryA));
-      s_HookData->DllHooks[apiset].FunctionHooks.push_back(
+      s_HookData->DllHooks["kernel32.dll"].FunctionHooks.push_back(
           FunctionHook("LoadLibraryW", NULL, &Hooked_LoadLibraryW));
-      s_HookData->DllHooks[apiset].FunctionHooks.push_back(
+      s_HookData->DllHooks["kernel32.dll"].FunctionHooks.push_back(
           FunctionHook("LoadLibraryExA", NULL, &Hooked_LoadLibraryExA));
-      s_HookData->DllHooks[apiset].FunctionHooks.push_back(
+      s_HookData->DllHooks["kernel32.dll"].FunctionHooks.push_back(
           FunctionHook("LoadLibraryExW", NULL, &Hooked_LoadLibraryExW));
-      s_HookData->DllHooks[apiset].FunctionHooks.push_back(
+      s_HookData->DllHooks["kernel32.dll"].FunctionHooks.push_back(
           FunctionHook("GetProcAddress", NULL, &Hooked_GetProcAddress));
+
+      for(const char *apiset :
+          {"api-ms-win-core-libraryloader-l1-1-0.dll", "api-ms-win-core-libraryloader-l1-1-1.dll",
+           "api-ms-win-core-libraryloader-l1-1-2.dll", "api-ms-win-core-libraryloader-l1-2-0.dll",
+           "api-ms-win-core-libraryloader-l1-2-1.dll"})
+      {
+        s_HookData->DllHooks[apiset].FunctionHooks.push_back(
+            FunctionHook("LoadLibraryA", NULL, &Hooked_LoadLibraryA));
+        s_HookData->DllHooks[apiset].FunctionHooks.push_back(
+            FunctionHook("LoadLibraryW", NULL, &Hooked_LoadLibraryW));
+        s_HookData->DllHooks[apiset].FunctionHooks.push_back(
+            FunctionHook("LoadLibraryExA", NULL, &Hooked_LoadLibraryExA));
+        s_HookData->DllHooks[apiset].FunctionHooks.push_back(
+            FunctionHook("LoadLibraryExW", NULL, &Hooked_LoadLibraryExW));
+        s_HookData->DllHooks[apiset].FunctionHooks.push_back(
+            FunctionHook("GetProcAddress", NULL, &Hooked_GetProcAddress));
+      }
+    }
+    else
+    {
+      RDCLOG(
+          "GFXCAP_NO_LOADLIB_HOOKS set - skipping internal LoadLibrary/GetProcAddress IAT hooks");
     }
 
     GetModuleHandleEx(
@@ -957,6 +978,22 @@ void LibraryHooks::EndHookRegistration()
 {
   for(auto it = s_HookData->DllHooks.begin(); it != s_HookData->DllHooks.end(); ++it)
     std::sort(it->second.FunctionHooks.begin(), it->second.FunctionHooks.end());
+
+  // Experimental diagnostic (exp I7): GFXCAP_NO_SWEEP=1 runs the whole registration phase
+  // but skips HookAllModules entirely - no CreateToolhelp32Snapshot module enumeration,
+  // no LoadLibraryW refcount bump per module, no IAT patching, no library callbacks.
+  // Isolates "the hook engine registering" from "the engine sweeping modules / patching",
+  // after I3 (almost nothing actually applied) still flagged the game ~3s in.
+  wchar_t noSweepBuf[8] = {};
+  bool noSweep = false;
+  if(GetEnvironmentVariableW(L"GFXCAP_NO_SWEEP", noSweepBuf, 8) > 0)
+    noSweep = (noSweepBuf[0] == L'1');
+
+  if(noSweep)
+  {
+    RDCLOG("GFXCAP_NO_SWEEP set - skipping module sweep / IAT application");
+    return;
+  }
 
 #if ENABLED(VERBOSE_DEBUG_HOOK)
   RDCDEBUG("Applying hooks");

@@ -125,7 +125,7 @@ void UpdateDialog::on_close_clicked()
 void UpdateDialog::on_update_clicked()
 {
   QMessageBox::StandardButton res =
-      RDDialog::question(this, tr("RenderDoc Update"),
+      RDDialog::question(this, tr("GfxCore Update"),
                          tr("This will close RenderDoc immediately - if you have any "
                             "unsaved work, save it first!\n"
                             "Continue?"),
@@ -145,14 +145,14 @@ void UpdateDialog::on_update_clicked()
       // just a sanity check to make sure we don't hit some unexpected case and infinite loop
       uint32_t prevIdent = nextIdent;
 
-      nextIdent = RENDERDOC_EnumerateRemoteTargets("localhost", nextIdent);
+      nextIdent = GC_EnumerateRemoteTargets("localhost", nextIdent);
 
       if(nextIdent == 0 || prevIdent >= nextIdent)
         break;
 
       running++;
 
-      ITargetControl *conn = RENDERDOC_CreateTargetControl("localhost", nextIdent, "updater", false);
+      ITargetControl *conn = GC_CreateTargetControl("localhost", nextIdent, "updater", false);
 
       if(conn)
       {
@@ -168,8 +168,8 @@ void UpdateDialog::on_update_clicked()
     if(running > 0)
     {
       RDDialog::critical(
-          this, tr("RenderDoc in use"),
-          tr("RenderDoc is currently capturing, cannot update until the program%1 closed:\n\n")
+          this, tr("GfxCore in use"),
+          tr("GfxCore is currently capturing, cannot update until the program%1 closed:\n\n")
                   .arg(running > 1 ? lit("s are") : lit(" is")) +
               runningPrograms);
       return;
@@ -229,8 +229,8 @@ void UpdateDialog::on_update_clicked()
 
       QDir dir(QDir::tempPath());
 
-      dir.mkdir(lit("RenderDocUpdate"));
-      dir.cd(lit("RenderDocUpdate"));
+      dir.mkdir(lit("GfxCoreUpdate"));
+      dir.cd(lit("GfxCoreUpdate"));
 
       QString path = dir.absoluteFilePath(lit("update.zip"));
 
@@ -255,8 +255,8 @@ void UpdateDialog::on_update_clicked()
 
       bool success = true;
 
-      QString dll = lit("renderdoc.dll");
-      QString cmd = lit("renderdoccmd.exe");
+      QString dll = lit("gfxcap.dll");
+      QString cmd = lit("gfxcapcmd.exe");
 
       QFile::remove(dir.absoluteFilePath(dll));
       QFile::remove(dir.absoluteFilePath(cmd));
