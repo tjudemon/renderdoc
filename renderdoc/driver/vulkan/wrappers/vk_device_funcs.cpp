@@ -933,6 +933,8 @@ VkResult WrappedVulkan::vkCreateInstance(const VkInstanceCreateInfo *pCreateInfo
   else
   {
     RenderDoc::Inst().AddDeviceFrameCapturer(LayerDisp(m_Instance), this);
+    RenderDoc::Inst().AddVulkanBridgeCapturer(this);
+    RDCLOG("Vulkan bridge: Vulkan instance %p registered capturer %p", m_Instance, this);
   }
 
   m_DbgReportCallback = VK_NULL_HANDLE;

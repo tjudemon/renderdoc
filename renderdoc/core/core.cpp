@@ -2337,6 +2337,49 @@ void RenderDoc::RemoveDeviceFrameCapturer(void *dev)
   m_DeviceFrameCapturers.erase(dev);
 }
 
+void RenderDoc::AddVulkanBridgeCapturer(IFrameCapturer *cap)
+{
+  if(IsReplayApp())
+    return;
+
+  if(cap == NULL)
+  {
+    RDCERR("Invalid Vulkan bridge frame capturer");
+    return;
+  }
+
+  SCOPED_LOCK(m_CapturerListLock);
+  if(!m_VulkanBridgeCapturers.contains(cap))
+  {
+    m_VulkanBridgeCapturers.push_back(cap);
+    RDCLOG("Vulkan bridge: registered capturer %p (%zu total)", cap,
+           m_VulkanBridgeCapturers.size());
+  }
+  else
+  {
+    RDCWARN("Vulkan bridge: duplicate registration for capturer %p (%zu total)", cap,
+            m_VulkanBridgeCapturers.size());
+  }
+}
+
+void RenderDoc::RemoveVulkanBridgeCapturer(IFrameCapturer *cap)
+{
+  if(IsReplayApp() || cap == NULL)
+    return;
+
+  SCOPED_LOCK(m_CapturerListLock);
+  size_t countBefore = m_VulkanBridgeCapturers.size();
+  m_VulkanBridgeCapturers.removeOne(cap);
+  RDCLOG("Vulkan bridge: removed capturer %p (%zu -> %zu total)", cap, countBefore,
+         m_VulkanBridgeCapturers.size());
+}
+
+rdcarray<IFrameCapturer *> RenderDoc::GetVulkanBridgeCapturers()
+{
+  SCOPED_LOCK(m_CapturerListLock);
+  return m_VulkanBridgeCapturers;
+}
+
 void RenderDoc::AddFrameCapturer(DeviceOwnedWindow devWnd, IFrameCapturer *cap)
 {
   if(IsReplayApp())

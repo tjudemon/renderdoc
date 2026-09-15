@@ -1180,6 +1180,8 @@ private:
 
   void AdvanceFrame();
   void Present(DeviceOwnedWindow devWnd);
+  void StartVulkanBridgeCaptures();
+  void EndVulkanBridgeCaptures();
 
   void HandleFrameMarkers(const char *marker, VkCommandBuffer commandBuffer);
   void HandleFrameMarkers(const char *marker, VkQueue queue);
