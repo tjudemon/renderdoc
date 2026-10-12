@@ -300,7 +300,7 @@ MainWindow::MainWindow(ICaptureContext &ctx) : QMainWindow(NULL), ui(new Ui::Mai
               NULL, tr("vkconfig detected - possible incompatibility"),
               tr("Configuration from 'vkconfig' tool detected.\n\n"
                  "This program has caused problems in the past and it is \n"
-                 "strongly recommended that you disable it while using GfxCore.\n\n"
+                 "strongly recommended that you disable it while using RenderDoc.\n\n"
                  "If this program is not active check the path below for any leftover files:\n\n%1")
                   .arg(vkconfigcheck.absoluteFilePath()));
 
@@ -320,9 +320,9 @@ MainWindow::MainWindow(ICaptureContext &ctx) : QMainWindow(NULL), ui(new Ui::Mai
   m_RemoteProbe = new LambdaThread([this]() {
     // fetch all device protocols to start them processing
     rdcarray<rdcstr> protocols;
-    GC_GetSupportedDeviceProtocols(&protocols);
+    RENDERDOC_GetSupportedDeviceProtocols(&protocols);
     for(const rdcstr &p : protocols)
-      GC_GetDeviceProtocolController(p);
+      RENDERDOC_GetDeviceProtocolController(p);
 
     while(m_RemoteProbeSemaphore.available())
     {
@@ -353,7 +353,7 @@ MainWindow::MainWindow(ICaptureContext &ctx) : QMainWindow(NULL), ui(new Ui::Mai
 #endif
 
   // only allow sending error reports if we have a valid git commit hash
-  rdcstr hash = GC_GetCommitHash();
+  rdcstr hash = RENDERDOC_GetCommitHash();
   if(hash.length() != 40 || hash.find_first_not_of("0123456789abcdef") >= 0)
   {
     qInfo() << "Disabling error reports due to invalid commit hash";
@@ -494,7 +494,7 @@ MainWindow::MainWindow(ICaptureContext &ctx) : QMainWindow(NULL), ui(new Ui::Mai
 #define SELF_HOST_NAME "librdocself.so"
 #endif
 
-  if(GC_CanSelfHostedCapture(SELF_HOST_NAME))
+  if(RENDERDOC_CanSelfHostedCapture(SELF_HOST_NAME))
   {
     QAction *begin = new QAction(tr("Start Self-hosted Capture"), this);
     QAction *end = new QAction(tr("End Self-hosted Capture"), this);
@@ -504,14 +504,14 @@ MainWindow::MainWindow(ICaptureContext &ctx) : QMainWindow(NULL), ui(new Ui::Mai
       begin->setEnabled(false);
       end->setEnabled(true);
 
-      GC_StartSelfHostCapture(SELF_HOST_NAME);
+      RENDERDOC_StartSelfHostCapture(SELF_HOST_NAME);
     });
 
     QObject::connect(end, &QAction::triggered, [begin, end]() {
       begin->setEnabled(true);
       end->setEnabled(false);
 
-      GC_EndSelfHostCapture(SELF_HOST_NAME);
+      RENDERDOC_EndSelfHostCapture(SELF_HOST_NAME);
     });
 
     ui->menu_Tools->addSeparator();
@@ -527,7 +527,7 @@ MainWindow::MainWindow(ICaptureContext &ctx) : QMainWindow(NULL), ui(new Ui::Mai
   ui->menu_Export_As->setEnabled(false);
 
   {
-    ICaptureFile *tmp = GC_OpenCaptureFile();
+    ICaptureFile *tmp = RENDERDOC_OpenCaptureFile();
     rdcarray<CaptureFileFormat> formats = tmp->GetCaptureFileFormats();
 
     for(const CaptureFileFormat &fmt : formats)
@@ -762,8 +762,8 @@ void MainWindow::OnCaptureTrigger(const QString &exe, const QString &workingDir,
   LambdaThread *th = new LambdaThread([this, exe, workingDir, cmdLine, env, opts, callback, &ret]() {
     if(isUnshareableDeviceInUse())
     {
-      RDDialog::warning(this, tr("GfxCore is already capturing an app on this device"),
-                        tr("A running app on this device is already being captured with GfxCore. "
+      RDDialog::warning(this, tr("RenderDoc is already capturing an app on this device"),
+                        tr("A running app on this device is already being captured with RenderDoc. "
                            "First please close the app then try to launch again."),
                         QMessageBox::Ok);
       return;
@@ -830,7 +830,7 @@ void MainWindow::OnInjectTrigger(uint32_t PID, const rdcarray<EnvironmentModific
   LambdaThread *th = new LambdaThread([this, PID, env, name, opts, callback, &ret]() {
     QString capturefile = m_Ctx.TempCaptureFilename(name);
 
-    ret = GC_InjectIntoProcess(PID, env, capturefile, opts, false);
+    ret = RENDERDOC_InjectIntoProcess(PID, env, capturefile, opts, false);
   });
   th->start();
   // wait a few ms before popping up a progress bar
@@ -871,7 +871,7 @@ void MainWindow::LoadCapture(const QString &filename, const ReplayOptions &opts,
 
     if(local)
     {
-      ICaptureFile *file = GC_OpenCaptureFile();
+      ICaptureFile *file = RENDERDOC_OpenCaptureFile();
 
       ResultDetails result = file->OpenFile(filename, "rdc", NULL);
 
@@ -1233,20 +1233,20 @@ void MainWindow::SetTitle(const QString &filename)
   if(m_Ctx.Replay().CurrentRemote().IsValid())
     prefix += tr("Remote: %1 - ").arg(m_Ctx.Replay().CurrentRemote().Name());
 
-  QString text = prefix + lit("GfxCore ");
+  QString text = prefix + lit("RenderDoc ");
 
   if(RENDERDOC_STABLE_BUILD)
     text += lit(FULL_VERSION_STRING);
   else
     text += tr("Unstable %1 Build (%2 - %3)")
-                .arg(GC_IsReleaseBuild() ? lit("Release") : lit("Development"))
+                .arg(RENDERDOC_IsReleaseBuild() ? lit("Release") : lit("Development"))
                 .arg(lit(FULL_VERSION_STRING))
-                .arg(QString::fromLatin1(GC_GetCommitHash()));
+                .arg(QString::fromLatin1(RENDERDOC_GetCommitHash()));
 
   if(IsRunningAsAdmin())
     text += tr(" (Administrator)");
 
-  if(QString::fromLatin1(GC_GetVersionString()) != lit(MAJOR_MINOR_VERSION_STRING))
+  if(QString::fromLatin1(RENDERDOC_GetVersionString()) != lit(MAJOR_MINOR_VERSION_STRING))
     text += tr(" - !! VERSION MISMATCH DETECTED !!");
 
   setWindowTitle(text);
@@ -1263,7 +1263,7 @@ bool MainWindow::HandleMismatchedVersions()
   {
     qCritical() << "Version mismatch between UI (" << lit(MAJOR_MINOR_VERSION_STRING) << ")"
                 << "and core"
-                << "(" << QString::fromUtf8(GC_GetVersionString()) << ")";
+                << "(" << QString::fromUtf8(RENDERDOC_GetVersionString()) << ")";
 
 #if !RENDERDOC_OFFICIAL_BUILD
     RDDialog::critical(
@@ -1273,11 +1273,11 @@ bool MainWindow::HandleMismatchedVersions()
 #else
     QMessageBox::StandardButton res = RDDialog::critical(
         this, tr("Mismatched versions"),
-        tr("GfxCore has detected mismatched versions between its internal module and UI.\n"
+        tr("RenderDoc has detected mismatched versions between its internal module and UI.\n"
            "This is likely caused by a buggy update in the past which partially updated your "
            "install."
            "Likely because a program was running with renderdoc while the update happened.\n"
-           "You should reinstall GfxCore immediately as this configuration is almost guaranteed "
+           "You should reinstall RenderDoc immediately as this configuration is almost guaranteed "
            "to crash.\n\n"
            "Would you like to open the downloads page to reinstall?"),
         QMessageBox::Yes | QMessageBox::No);
@@ -1295,7 +1295,7 @@ bool MainWindow::HandleMismatchedVersions()
 
 bool MainWindow::IsVersionMismatched()
 {
-  return QString::fromLatin1(GC_GetVersionString()) != lit(MAJOR_MINOR_VERSION_STRING);
+  return QString::fromLatin1(RENDERDOC_GetVersionString()) != lit(MAJOR_MINOR_VERSION_STRING);
 }
 
 void MainWindow::ClearRecentCaptureFiles()
@@ -2143,7 +2143,7 @@ void MainWindow::setRemoteHost(int hostIdx)
               RDDialog::critical(
                   this, tr("Unsupported Device Android Version"),
                   tr("This device is older than Android 6.0, the minimum required version for "
-                     "GfxCore.\n\nThis may break or cause unknown problems - use at your own "
+                     "RenderDoc.\n\nThis may break or cause unknown problems - use at your own "
                      "risk."));
             }
 
@@ -2153,7 +2153,7 @@ void MainWindow::setRemoteHost(int hostIdx)
           {
             RDDialog::critical(
                 this, tr("Unsupported Device"),
-                tr("This device is not able to support GfxCore. Please consult the documentation "
+                tr("This device is not able to support RenderDoc. Please consult the documentation "
                    "for this type of device to see what the problem may be."));
           }
         });
@@ -3045,12 +3045,12 @@ void MainWindow::sendErrorReport(bool forceCaptureInclusion)
     return;
 
   rdcstr report;
-  GC_CreateBugReport(GC_GetLogFile(), "", report);
+  RENDERDOC_CreateBugReport(RENDERDOC_GetLogFile(), "", report);
 
   QVariantMap json;
 
   json[lit("version")] = lit(FULL_VERSION_STRING);
-  json[lit("gitcommit")] = QString::fromLatin1(GC_GetCommitHash());
+  json[lit("gitcommit")] = QString::fromLatin1(RENDERDOC_GetCommitHash());
   json[lit("replaycrash")] = 1;
   json[lit("manual")] = 1;
   json[lit("forcecapture")] = forceCaptureInclusion ? 1 : 0;
@@ -3151,10 +3151,10 @@ void MainWindow::updateToolsMenuOptions()
 
 void MainWindow::closeEvent(QCloseEvent *event)
 {
-  if(GC_IsGlobalHookActive())
+  if(RENDERDOC_IsGlobalHookActive())
   {
     RDDialog::critical(this, tr("Global hook active"),
-                       tr("Cannot close GfxCore while global hook is active."));
+                       tr("Cannot close RenderDoc while global hook is active."));
     event->ignore();
     return;
   }
@@ -3371,7 +3371,7 @@ void MainWindow::showLaunchError(ResultDetails result)
     case ResultCode::AndroidGrantPermissionsFailed:
       message =
           tr("%1.\n\n"
-             "Please manually allow the GfxCoreCmd program storage permissions on your device "
+             "Please manually allow the RenderDocCmd program storage permissions on your device "
              "to ensure correct functionality.")
               .arg(result.Message());
       break;
@@ -3395,11 +3395,11 @@ void MainWindow::showLaunchError(ResultDetails result)
           );
       break;
     default:
-      message = tr("Error encountered launching GfxCore remote server: %1.").arg(result.Message());
+      message = tr("Error encountered launching RenderDoc remote server: %1.").arg(result.Message());
       break;
   }
   GUIInvoke::call(this, [this, message]() {
-    RDDialog::warning(this, tr("Problems launching GfxCore remote server"), message);
+    RDDialog::warning(this, tr("Problems launching RenderDoc remote server"), message);
   });
 }
 
@@ -3413,6 +3413,6 @@ bool MainWindow::isUnshareableDeviceInUse()
   if(m_Ctx.Replay().CurrentRemote().Protocol()->SupportsMultiplePrograms(host))
     return false;
 
-  uint32_t ident = GC_EnumerateRemoteTargets(host, 0);
+  uint32_t ident = RENDERDOC_EnumerateRemoteTargets(host, 0);
   return ident != 0;
 }

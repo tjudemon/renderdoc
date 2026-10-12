@@ -136,8 +136,8 @@ struct VersionCommand : public Command
   virtual bool Parse(cmdline::parser &, GlobalEnvironment &) { return true; }
   virtual int Execute(const CaptureOptions &)
   {
-    std::cout << "gfxcapcmd " << (sizeof(uintptr_t) == sizeof(uint64_t) ? "x64" : "x86")
-              << " v" MAJOR_MINOR_VERSION_STRING << " built from " << GC_GetCommitHash()
+    std::cout << "renderdoccmd " << (sizeof(uintptr_t) == sizeof(uint64_t) ? "x64" : "x86")
+              << " v" MAJOR_MINOR_VERSION_STRING << " built from " << RENDERDOC_GetCommitHash()
               << std::endl;
 
 #if defined(DISTRIBUTION_VERSION)
@@ -235,7 +235,7 @@ public:
 
     rdcarray<EnvironmentModification> env;
 
-    ExecuteResult res = GC_ExecuteAndInject(
+    ExecuteResult res = RENDERDOC_ExecuteAndInject(
         conv(executable), conv(workingDir), conv(cmdLine), env, conv(logFile), opts, wait_for_exit);
 
     if(res.result.code != ResultCode::Succeeded)
@@ -291,7 +291,7 @@ public:
   {
     parser.add<uint32_t>("PID", 0, "The process ID of the process to inject.", true);
   }
-  virtual const char *Description() { return "Injects GfxCore into a given running process."; }
+  virtual const char *Description() { return "Injects RenderDoc into a given running process."; }
   virtual bool IsInternalOnly() { return false; }
   virtual bool IsCaptureCommand() { return true; }
   virtual bool Parse(cmdline::parser &parser, GlobalEnvironment &)
@@ -307,7 +307,7 @@ public:
 
     rdcarray<EnvironmentModification> env;
 
-    ExecuteResult res = GC_InjectIntoProcess(PID, env, conv(captureFile), opts, wait_for_exit);
+    ExecuteResult res = RENDERDOC_InjectIntoProcess(PID, env, conv(captureFile), opts, wait_for_exit);
 
     if(res.result.code != ResultCode::Succeeded)
     {
@@ -415,7 +415,7 @@ public:
 
     bytebuf buf;
 
-    ICaptureFile *file = GC_OpenCaptureFile();
+    ICaptureFile *file = RENDERDOC_OpenCaptureFile();
     ResultDetails st = file->OpenFile(conv(infile), "rdc", NULL);
     if(st.OK())
     {
@@ -513,7 +513,7 @@ public:
     if(DisplayRemoteServerPreview(false, {}).system != WindowingSystem::Unknown)
       previewWindow = &DisplayRemoteServerPreview;
 
-    GC_BecomeRemoteServer(
+    RENDERDOC_BecomeRemoteServer(
         conv(host), port, []() { return killSignal; }, previewWindow);
 
     std::cerr << std::endl << "Cleaning up from replay hosting." << std::endl;
@@ -583,13 +583,13 @@ public:
       std::cout << "Replaying '" << filename << "' on " << remote_host << "." << std::endl;
 
       IRemoteServer *remote = NULL;
-      ResultDetails result = GC_CreateRemoteServerConnection(conv(remote_host), &remote);
+      ResultDetails result = RENDERDOC_CreateRemoteServerConnection(conv(remote_host), &remote);
 
       if(remote == NULL || result.code != ResultCode::Succeeded)
       {
         std::cerr << "Error: " << result.Message() << " - Couldn't connect to " << remote_host
                   << "." << std::endl;
-        std::cerr << "       Have you run gfxcapcmd remoteserver on '" << remote_host << "'?"
+        std::cerr << "       Have you run renderdoccmd remoteserver on '" << remote_host << "'?"
                   << std::endl;
         return 1;
       }
@@ -619,7 +619,7 @@ public:
     {
       std::cout << "Replaying '" << filename << "' locally.." << std::endl;
 
-      ICaptureFile *file = GC_OpenCaptureFile();
+      ICaptureFile *file = RENDERDOC_OpenCaptureFile();
 
       ResultDetails res = file->OpenFile(conv(filename), "rdc", NULL);
 
@@ -656,7 +656,7 @@ struct formats_reader
 {
   formats_reader(bool input)
   {
-    ICaptureFile *tmp = GC_OpenCaptureFile();
+    ICaptureFile *tmp = RENDERDOC_OpenCaptureFile();
 
     for(const CaptureFileFormat &f : tmp->GetCaptureFileFormats())
     {
@@ -746,7 +746,7 @@ public:
 
   virtual int Execute(const CaptureOptions &)
   {
-    ICaptureFile *tmp = GC_OpenCaptureFile();
+    ICaptureFile *tmp = RENDERDOC_OpenCaptureFile();
 
     m_Formats = tmp->GetCaptureFileFormats();
 
@@ -809,7 +809,7 @@ public:
       return 1;
     }
 
-    ICaptureFile *file = GC_OpenCaptureFile();
+    ICaptureFile *file = RENDERDOC_OpenCaptureFile();
 
     ResultDetails st = file->OpenFile(conv(infile), conv(infmt), NULL);
 
@@ -897,10 +897,10 @@ public:
   virtual int Execute(const CaptureOptions &)
   {
     if(mode == "unit")
-      return GC_RunUnitTests("gfxcapcmd test unit", args);
+      return RENDERDOC_RunUnitTests("renderdoccmd test unit", args);
 #if PYTHON_AVAILABLE == 1
     else if(mode == "functional")
-      return GC_RunFunctionalTests(args);
+      return RENDERDOC_RunFunctionalTests(args);
 #endif
 
     std::cerr << "Unsupported test frame work '" << mode << "'" << std::endl << std::endl;
@@ -1017,9 +1017,9 @@ public:
   }
   virtual int Execute(const CaptureOptions &)
   {
-    GC_SetDebugLogFile(conv(debuglog));
+    RENDERDOC_SetDebugLogFile(conv(debuglog));
 
-    ExecuteResult result = GC_InjectIntoProcess(pid, env, conv(capfile), cmdopts, false);
+    ExecuteResult result = RENDERDOC_InjectIntoProcess(pid, env, conv(capfile), cmdopts, false);
 
     if(result.result.OK())
       return result.ident;
@@ -1116,7 +1116,7 @@ public:
       lz4 = false;
     }
 
-    ICaptureFile *capfile = GC_OpenCaptureFile();
+    ICaptureFile *capfile = RENDERDOC_OpenCaptureFile();
 
     ResultDetails result = capfile->OpenFile(conv(rdc), "", NULL);
 
@@ -1278,7 +1278,7 @@ private:
 public:
   VulkanRegisterCommand() : Command()
   {
-    m_LayerNeedUpdate = GC_NeedVulkanLayerRegistration(&m_Info);
+    m_LayerNeedUpdate = RENDERDOC_NeedVulkanLayerRegistration(&m_Info);
   }
   virtual void AddOptions(cmdline::parser &parser)
   {
@@ -1316,9 +1316,9 @@ public:
         {
           std::cerr << "** There is an unfixable problem with your vulkan layer configuration.\n\n"
                        "This is most commonly caused by having a distribution-provided package of "
-                       "GfxCore "
+                       "RenderDoc "
                        "installed, which cannot be modified by another build of RenderDoc.\n\n"
-                       "Please consult the GfxCore documentation, or package/distribution "
+                       "Please consult the RenderDoc documentation, or package/distribution "
                        "documentation on "
                        "linux."
                     << std::endl;
@@ -1341,10 +1341,10 @@ public:
         std::cerr << std::endl;
 
         if(m_Info.flags & VulkanLayerFlags::OtherInstallsRegistered)
-          std::cerr << " - Non-matching GfxCore layer(s) are registered." << std::endl;
+          std::cerr << " - Non-matching RenderDoc layer(s) are registered." << std::endl;
 
         if(!(m_Info.flags & VulkanLayerFlags::ThisInstallRegistered))
-          std::cerr << " - This build's GfxCore layer is not registered." << std::endl;
+          std::cerr << " - This build's RenderDoc layer is not registered." << std::endl;
 
         std::cerr << std::endl;
 
@@ -1414,7 +1414,7 @@ public:
       }
       else
       {
-        std::cerr << "The GfxCore vulkan layer appears to be correctly registered." << std::endl;
+        std::cerr << "The RenderDoc vulkan layer appears to be correctly registered." << std::endl;
       }
 
       // don't do anything if we're just explaining the situation
@@ -1437,9 +1437,9 @@ public:
     }
     else if(user || system)
     {
-      GC_UpdateVulkanLayerRegistration(system);
+      RENDERDOC_UpdateVulkanLayerRegistration(system);
 
-      if(GC_NeedVulkanLayerRegistration(NULL))
+      if(RENDERDOC_NeedVulkanLayerRegistration(NULL))
       {
         std::cerr << "Vulkan layer registration not successful. ";
         if(system)
@@ -1493,7 +1493,7 @@ static int command_usage(std::string command)
               << std::endl
               << std::endl;
 
-  std::cerr << "Usage: gfxcapcmd <command> [args ...]" << std::endl;
+  std::cerr << "Usage: renderdoccmd <command> [args ...]" << std::endl;
   std::cerr << "Command line tool for capture & replay with RenderDoc." << std::endl << std::endl;
 
   std::cerr << "Command can be one of:" << std::endl;
@@ -1519,7 +1519,7 @@ static int command_usage(std::string command)
   }
   std::cerr << std::endl;
 
-  std::cerr << "To see details of any command, see 'gfxcapcmd <command> --help'" << std::endl
+  std::cerr << "To see details of any command, see 'renderdoccmd <command> --help'" << std::endl
             << std::endl;
 
   std::cerr << "For more information, see <https://renderdoc.org/>." << std::endl;
@@ -1609,7 +1609,7 @@ int renderdoccmd(GlobalEnvironment &env, std::vector<std::string> &argv)
 
     cmdline::parser cmd;
 
-    cmd.set_program_name("gfxcapcmd");
+    cmd.set_program_name("renderdoccmd");
     cmd.set_header(command);
 
     it->second->AddOptions(cmd);
@@ -1702,11 +1702,11 @@ int renderdoccmd(GlobalEnvironment &env, std::vector<std::string> &argv)
 
     args.append(it->second->ReplayArgs());
 
-    GC_InitialiseReplay(env, args);
+    RENDERDOC_InitialiseReplay(env, args);
 
     int ret = it->second->Execute(opts);
 
-    GC_ShutdownReplay();
+    RENDERDOC_ShutdownReplay();
 
     clean_up();
     return ret;

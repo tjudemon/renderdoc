@@ -93,7 +93,7 @@ public:
   void finish()
   {
     std::string msg = this->str();
-    GC_LogMessage(LogType::Comment, "EXTN", __FILE__, __LINE__, msg.c_str());
+    RENDERDOC_LogMessage(LogType::Comment, "EXTN", __FILE__, __LINE__, msg.c_str());
     fputs(msg.c_str(), file);
   }
   virtual int sync() override
@@ -103,7 +103,7 @@ public:
     if(idx >= 0)
     {
       rdcstr msg = str.substr(0, idx + 1);
-      GC_LogMessage(LogType::Comment, "EXTN", __FILE__, __LINE__, msg);
+      RENDERDOC_LogMessage(LogType::Comment, "EXTN", __FILE__, __LINE__, msg);
       fputs(msg.c_str(), file);
       str = str.substr(idx + 1);
       this->str("");
@@ -163,7 +163,7 @@ void sharedLogOutput(QtMsgType type, const QMessageLogContext &context, const QS
     case QtFatalMsg: logtype = LogType::Fatal; break;
   }
 
-  GC_LogMessage(logtype, "QTRD", context.file ? context.file : rdcstr(), context.line, msg);
+  RENDERDOC_LogMessage(logtype, "QTRD", context.file ? context.file : rdcstr(), context.line, msg);
 }
 
 static QString tr(const char *string)
@@ -282,7 +282,7 @@ int main(int argc, char *argv[])
     GlobalEnvironment env;
     env.enumerateGPUs = false;
     rdcarray<rdcstr> coreargs;
-    GC_InitialiseReplay(env, coreargs);
+    RENDERDOC_InitialiseReplay(env, coreargs);
 
     {
       QCoreApplication application(argc, mod_argv);
@@ -312,7 +312,7 @@ int main(int argc, char *argv[])
       PythonContext::GlobalShutdown();
     }
 
-    GC_ShutdownReplay();
+    RENDERDOC_ShutdownReplay();
 
     logbuf.finish();
 
@@ -389,7 +389,7 @@ int main(int argc, char *argv[])
 
   if(parser.isSet(versionOption))
   {
-    printf("QRenderDoc v%s (%s)\n", MAJOR_MINOR_VERSION_STRING, GC_GetCommitHash());
+    printf("QRenderDoc v%s (%s)\n", MAJOR_MINOR_VERSION_STRING, RENDERDOC_GetCommitHash());
 #if defined(DISTRIBUTION_VERSION)
     printf("Packaged for %s - %s\n", DISTRIBUTION_NAME, DISTRIBUTION_CONTACT);
 #endif
@@ -400,9 +400,9 @@ int main(int argc, char *argv[])
   {
     qInfo() << "Updating Vulkan layer registration";
     if(parser.value(installLayer) == lit("root"))
-      GC_UpdateVulkanLayerRegistration(true);
+      RENDERDOC_UpdateVulkanLayerRegistration(true);
     else
-      GC_UpdateVulkanLayerRegistration(false);
+      RENDERDOC_UpdateVulkanLayerRegistration(false);
     return 0;
   }
 
@@ -424,13 +424,13 @@ int main(int argc, char *argv[])
     // the renderdoccmd updater that runs us is from the old version, so older versions might be
     // running us as admin expecting the version number to be updated.
     // if we're not running as admin, this will immediately exit
-    GC_UpdateInstalledVersionNumber();
+    RENDERDOC_UpdateInstalledVersionNumber();
   }
 
   if(parser.isSet(updateDoneAdmin))
   {
     qInfo() << "Finishing update as admin";
-    GC_UpdateInstalledVersionNumber();
+    RENDERDOC_UpdateInstalledVersionNumber();
     return 0;
   }
 
@@ -460,7 +460,7 @@ int main(int argc, char *argv[])
     else
     {
       // no port specified, find the first open port.
-      ident = GC_EnumerateRemoteTargets(host, ident);
+      ident = RENDERDOC_EnumerateRemoteTargets(host, ident);
       ok = (ident != 0);
     }
 
@@ -604,7 +604,7 @@ int main(int argc, char *argv[])
       if(!crashReportPath.isEmpty())
         env.enumerateGPUs = false;
 
-      GC_InitialiseReplay(env, coreargs);
+      RENDERDOC_InitialiseReplay(env, coreargs);
     }
 
 #if defined(RENDERDOC_PLATFORM_LINUX) && !defined(RENDERDOC_WINDOWING_WAYLAND)
@@ -735,7 +735,7 @@ int main(int argc, char *argv[])
       config.Save();
     }
 
-    GC_ShutdownReplay();
+    RENDERDOC_ShutdownReplay();
 
     PythonContext::GlobalShutdown();
 

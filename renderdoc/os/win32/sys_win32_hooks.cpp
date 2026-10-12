@@ -73,8 +73,6 @@ typedef BOOL(WINAPI *PFN_CREATE_PROCESS_WITH_LOGON_W)(LPCWSTR lpUsername, LPCWST
 class SysHook : LibraryHook
 {
 public:
-  const char *GetName() const override { return "sys"; }
-
   SysHook()
   {
     // we start with a refcount of 1 because we initialise WSA ourselves for our own sockets.
@@ -84,21 +82,6 @@ public:
   void RegisterHooks()
   {
     RDCLOG("Registering Win32 system hooks");
-
-    // Experimental diagnostic (exp I): GFXCAP_NO_SYS_HOOKS=1 skips the CreateProcess/WSA
-    // IAT hooks. They exist only for recursive child-process injection (hookIntoChildren),
-    // which we don't need when injecting LastWar.exe directly - and they patch kernel32/
-    // advapi32 imports in the target, the most visible form of import tampering to an AC.
-    wchar_t noSysBuf[8] = {};
-    bool noSys = false;
-    if(GetEnvironmentVariableW(L"GFXCAP_NO_SYS_HOOKS", noSysBuf, 8) > 0)
-      noSys = (noSysBuf[0] == L'1');
-
-    if(noSys)
-    {
-      RDCLOG("GFXCAP_NO_SYS_HOOKS set - skipping Win32 system hooks");
-      return;
-    }
 
     // register libraries that we care about. We don't need a callback when they are loaded
     LibraryHooks::RegisterLibraryHook("kernel32.dll", NULL);
@@ -354,7 +337,7 @@ private:
     {
       rdcstr app = strlower(StringFormat::Wide2UTF8(lpApplicationName));
 
-      if(app.contains("gfxcapcmd.exe"))
+      if(app.contains("renderdoccmd.exe") || app.contains("qrenderdoc.exe"))
       {
         inject = false;
       }
@@ -363,7 +346,7 @@ private:
     {
       rdcstr cmd = strlower(StringFormat::Wide2UTF8(lpCommandLine));
 
-      if(cmd.contains("gfxcapcmd.exe"))
+      if(cmd.contains("renderdoccmd.exe") || cmd.contains("qrenderdoc.exe"))
       {
         inject = false;
       }

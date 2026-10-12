@@ -1415,7 +1415,7 @@ void LiveCapture::selfClose()
 void LiveCapture::connectionThreadEntry()
 {
   ITargetControl *conn =
-      GC_CreateTargetControl(m_Hostname, m_RemoteIdent, GetSystemUsername(), true);
+      RENDERDOC_CreateTargetControl(m_Hostname, m_RemoteIdent, GetSystemUsername(), true);
   m_Connected.release();
 
   if(!conn || !conn->Connected())

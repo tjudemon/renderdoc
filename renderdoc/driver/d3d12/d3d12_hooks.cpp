@@ -550,8 +550,6 @@ public:
 class D3D12Hook : LibraryHook
 {
 public:
-  const char *GetName() const override { return "d3d12"; }
-
   void RegisterHooks()
   {
     RDCLOG("Registering D3D12 hooks");

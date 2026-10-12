@@ -189,11 +189,6 @@ struct LibraryHook
   virtual void RegisterHooks() = 0;
   virtual void OptionsUpdated() {}
   virtual void RemoveHooks() {}
-
-  // Short lowercase name for this subsystem. Used only for the GFXCAP_SUBSYSTEMS
-  // diagnostic whitelist (exp I10) and for logging the registered subsystem list.
-  virtual const char *GetName() const { return "unknown"; }
-
 private:
   friend class LibraryHooks;
 

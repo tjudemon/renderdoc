@@ -146,7 +146,7 @@ WindowingData DisplayRemoteServerPreview(bool active, const rdcarray<WindowingSy
       AdjustWindowRect(&wr, WS_OVERLAPPEDWINDOW, FALSE);
 
       HWND wnd =
-          CreateWindowEx(WS_EX_CLIENTEDGE, L"gfxcapcmd", L"Remote Server Preview",
+          CreateWindowEx(WS_EX_CLIENTEDGE, L"renderdoccmd", L"Remote Server Preview",
                          WS_OVERLAPPED | WS_CAPTION | WS_MINIMIZEBOX, CW_USEDEFAULT, CW_USEDEFAULT,
                          wr.right - wr.left, wr.bottom - wr.top, NULL, NULL, hInstance, NULL);
 
@@ -193,7 +193,7 @@ void DisplayRendererPreview(IReplayController *renderer, TextureDisplay &display
   RECT wr = {0, 0, (LONG)width, (LONG)height};
   AdjustWindowRect(&wr, WS_OVERLAPPEDWINDOW, FALSE);
 
-  HWND wnd = CreateWindowEx(WS_EX_CLIENTEDGE, L"gfxcapcmd", L"gfxcapcmd", WS_OVERLAPPEDWINDOW,
+  HWND wnd = CreateWindowEx(WS_EX_CLIENTEDGE, L"renderdoccmd", L"renderdoccmd", WS_OVERLAPPEDWINDOW,
                             CW_USEDEFAULT, CW_USEDEFAULT, wr.right - wr.left, wr.bottom - wr.top,
                             NULL, NULL, hInstance, NULL);
 
@@ -583,7 +583,7 @@ public:
 
     // create each parent directory separately, and use \\s
 
-    dumpFolder += L"GfxCore";
+    dumpFolder += L"RenderDoc";
     CreateDirectoryW(dumpFolder.c_str(), NULL);
 
     dumpFolder += L"\\dumps";
@@ -690,7 +690,7 @@ public:
 
       std::string reportPath = conv(dumpFolder) + "\\" + dumpId + ".zip";
 
-      GC_CreateBugReport(rdcstr(conv(wlogpath).c_str()), rdcstr(conv(wdump).c_str()),
+      RENDERDOC_CreateBugReport(rdcstr(conv(wlogpath).c_str()), rdcstr(conv(wdump).c_str()),
                                 rdcstr(reportPath.c_str()));
 
       for(size_t i = 0; i < reportPath.size(); i++)
@@ -814,12 +814,12 @@ public:
 
     wchar_t rdocpath[1024];
 
-    // fetch path to our matching gfxcap.dll
-    HMODULE rdoc = GetModuleHandleA("gfxcap.dll");
+    // fetch path to our matching renderdoc.dll
+    HMODULE rdoc = GetModuleHandleA("renderdoc.dll");
 
     if(rdoc == NULL)
     {
-      std::cerr << "globalhook could not find gfxcap.dll!" << std::endl;
+      std::cerr << "globalhook couldn't find renderdoc.dll!" << std::endl;
       return 1;
     }
 
@@ -907,7 +907,7 @@ int main(int, char *)
     argv[i] = conv(std::wstring(wargv[i]));
 
   if(argv.empty())
-    argv.push_back("gfxcapcmd");
+    argv.push_back("renderdoccmd");
 
   LocalFree(wargv);
 
@@ -924,7 +924,7 @@ int main(int, char *)
   wc.hCursor = LoadCursor(NULL, IDC_ARROW);
   wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
   wc.lpszMenuName = NULL;
-  wc.lpszClassName = L"gfxcapcmd";
+  wc.lpszClassName = L"renderdoccmd";
   wc.hIconSm = LoadIcon(NULL, MAKEINTRESOURCE(IDI_ICON));
 
   if(!RegisterClassEx(&wc))
@@ -943,7 +943,7 @@ int main(int, char *)
 #endif
 
   // this installs a global windows hook pointing at renderdocshim*.dll that filters all running
-  // processes and loads gfxcap.dll in the target one. In any other process it unloads as soon as
+  // processes and loads renderdoc.dll in the target one. In any other process it unloads as soon as
   // possible
   add_command("globalhook", new GlobalHookCommand());
 

@@ -35,8 +35,6 @@ typedef DWORD(WINAPI *PFN_GET_OPTIONS)();
 class D3D9Hook : LibraryHook
 {
 public:
-  const char *GetName() const override { return "d3d9"; }
-
   void RegisterHooks()
   {
     RDCLOG("Registering D3D9 hooks");

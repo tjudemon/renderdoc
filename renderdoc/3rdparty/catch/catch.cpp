@@ -81,7 +81,7 @@ std::ostream &clog()
 }
 }
 
-extern "C" RENDERDOC_API int RENDERDOC_CC GC_RunUnitTests(const rdcstr &command,
+extern "C" RENDERDOC_API int RENDERDOC_CC RENDERDOC_RunUnitTests(const rdcstr &command,
                                                                  const rdcarray<rdcstr> &args)
 {
   LogOutputter logbuf;
@@ -120,7 +120,7 @@ extern "C" RENDERDOC_API int RENDERDOC_CC GC_RunUnitTests(const rdcstr &command,
 #include "api/replay/rdcarray.h"
 #include "api/replay/rdcstr.h"
 
-extern "C" RENDERDOC_API int RENDERDOC_CC GC_RunUnitTests(const rdcstr &command,
+extern "C" RENDERDOC_API int RENDERDOC_CC RENDERDOC_RunUnitTests(const rdcstr &command,
                                                                  const rdcarray<rdcstr> &args)
 {
   return 0;

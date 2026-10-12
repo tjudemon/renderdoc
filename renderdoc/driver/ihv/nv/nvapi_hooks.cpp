@@ -140,8 +140,6 @@ typedef NVENCSTATUS(NVENCAPI *PFN_NvEncodeAPICreateInstance)(NV_ENCODE_API_FUNCT
 class NVHook : LibraryHook
 {
 public:
-  const char *GetName() const override { return "nv"; }
-
   void RegisterHooks()
   {
     RDCLOG("Registering nvidia hooks");
@@ -205,7 +203,7 @@ private:
     }
     else
     {
-      RDCERR("Didn't pass GfxCore-wrapped device to nvapi function");
+      RDCERR("Didn't pass RenderDoc-wrapped device to nvapi function");
       return NVAPI_INVALID_POINTER;
     }
   }
@@ -236,13 +234,13 @@ private:
       }
       else
       {
-        RDCERR("Couldn't retrieve ID3D12Device from GfxCore-wrapped device");
+        RDCERR("Couldn't retrieve ID3D12Device from RenderDoc-wrapped device");
         return NVAPI_INVALID_POINTER;
       }
     }
     else
     {
-      RDCERR("Didn't pass GfxCore-wrapped device to nvapi function");
+      RDCERR("Didn't pass RenderDoc-wrapped device to nvapi function");
       return NVAPI_INVALID_POINTER;
     }
   }
@@ -264,7 +262,7 @@ private:
     }
     else
     {
-      RDCERR("Didn't pass GfxCore-wrapped device to nvapi function");
+      RDCERR("Didn't pass RenderDoc-wrapped device to nvapi function");
       return NVAPI_INVALID_POINTER;
     }
   }
@@ -287,7 +285,7 @@ private:
     }
     else
     {
-      RDCERR("Didn't pass GfxCore-wrapped device to nvapi function");
+      RDCERR("Didn't pass RenderDoc-wrapped device to nvapi function");
       return NVAPI_INVALID_POINTER;
     }
   }
@@ -311,7 +309,7 @@ private:
     }
     else
     {
-      RDCERR("Didn't pass GfxCore-wrapped device to nvapi function");
+      RDCERR("Didn't pass RenderDoc-wrapped device to nvapi function");
       return NVAPI_INVALID_POINTER;
     }
   }
@@ -334,7 +332,7 @@ private:
     }
     else
     {
-      RDCERR("Didn't pass GfxCore-wrapped device to nvapi function");
+      RDCERR("Didn't pass RenderDoc-wrapped device to nvapi function");
       return NVAPI_INVALID_POINTER;
     }
   }
@@ -412,13 +410,13 @@ private:
       }
       else
       {
-        RDCERR("Couldn't retrieve ID3D12Device from GfxCore-wrapped device");
+        RDCERR("Couldn't retrieve ID3D12Device from RenderDoc-wrapped device");
         return NVAPI_INVALID_POINTER;
       }
     }
     else
     {
-      RDCERR("Didn't pass GfxCore-wrapped device to nvapi function");
+      RDCERR("Didn't pass RenderDoc-wrapped device to nvapi function");
       return NVAPI_INVALID_POINTER;
     }
   }
@@ -496,13 +494,13 @@ private:
       }
       else
       {
-        RDCERR("Couldn't retrieve ID3D12Device from GfxCore-wrapped device");
+        RDCERR("Couldn't retrieve ID3D12Device from RenderDoc-wrapped device");
         return NVAPI_INVALID_POINTER;
       }
     }
     else
     {
-      RDCERR("Didn't pass GfxCore-wrapped device to nvapi function");
+      RDCERR("Didn't pass RenderDoc-wrapped device to nvapi function");
       return NVAPI_INVALID_POINTER;
     }
   }

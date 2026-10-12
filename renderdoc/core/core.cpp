@@ -523,9 +523,9 @@ void RenderDoc::RecreateCrashHandler()
   FileIO::GetExecutableFilename(exename);
   exename = strlower(exename);
 
-  // only create crash handler when we're not in gfxcapcmd (to prevent infinite loop as
-  // the crash handler itself launches gfxcapcmd)
-  if(exename.contains("gfxcapcmd"))
+  // only create crash handler when we're not in renderdoccmd (to prevent infinite loop as
+  // the crash handler itself launches renderdoccmd)
+  if(exename.contains("renderdoccmd"))
     return;
 
 #if ENABLED(RDOC_WIN32)
@@ -690,7 +690,7 @@ void RenderDoc::Initialise()
   {
     rdcstr capture_filename;
 
-    const rdcstr base = IsReplayApp() ? "GfxCore" : "GfxCore_app";
+    const rdcstr base = IsReplayApp() ? "RenderDoc" : "RenderDoc_app";
 
     FileIO::GetDefaultFiles(base, capture_filename, m_LoggingFilename, m_Target);
 
@@ -713,7 +713,7 @@ void RenderDoc::Initialise()
       "Unknown";
 #endif
 
-  RDCLOG("GfxCore v%s %s %s %s (%s) %s", MAJOR_MINOR_VERSION_STRING, platform,
+  RDCLOG("RenderDoc v%s %s %s %s (%s) %s", MAJOR_MINOR_VERSION_STRING, platform,
          sizeof(uintptr_t) == sizeof(uint64_t) ? "64-bit" : "32-bit",
          ENABLED(RDOC_RELEASE) ? "Release" : "Development", GitVersionHash,
          IsReplayApp() ? "loaded in replay application" : "capturing application");

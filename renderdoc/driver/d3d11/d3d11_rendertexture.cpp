@@ -632,7 +632,7 @@ bool D3D11Replay::RenderTextureInternal(TextureDisplay cfg, TexDisplayFlags flag
             {
               const DXBC::CBufferVariable &var = cbuf.variables[v];
 
-              if(var.name == "GC_TexDim")
+              if(var.name == "RENDERDOC_TexDim")
               {
                 if(var.type.rows == 1 && var.type.cols == 4 && var.type.varType == VarType::UInt)
                 {
@@ -649,19 +649,19 @@ bool D3D11Replay::RenderTextureInternal(TextureDisplay cfg, TexDisplayFlags flag
                           var.name.c_str());
                 }
               }
-              else if(var.name == "GC_YUVDownsampleRate")
+              else if(var.name == "RENDERDOC_YUVDownsampleRate")
               {
                 Vec4u *d = (Vec4u *)(byteData + var.offset);
 
                 *d = details.YUVDownsampleRate;
               }
-              else if(var.name == "GC_YUVAChannels")
+              else if(var.name == "RENDERDOC_YUVAChannels")
               {
                 Vec4u *d = (Vec4u *)(byteData + var.offset);
 
                 *d = details.YUVAChannels;
               }
-              else if(var.name == "GC_SelectedMip")
+              else if(var.name == "RENDERDOC_SelectedMip")
               {
                 if(var.type.rows == 1 && var.type.cols == 1 && var.type.varType == VarType::UInt)
                 {
@@ -675,7 +675,7 @@ bool D3D11Replay::RenderTextureInternal(TextureDisplay cfg, TexDisplayFlags flag
                           var.name.c_str());
                 }
               }
-              else if(var.name == "GC_SelectedSliceFace")
+              else if(var.name == "RENDERDOC_SelectedSliceFace")
               {
                 if(var.type.rows == 1 && var.type.cols == 1 && var.type.varType == VarType::UInt)
                 {
@@ -689,7 +689,7 @@ bool D3D11Replay::RenderTextureInternal(TextureDisplay cfg, TexDisplayFlags flag
                           var.name.c_str());
                 }
               }
-              else if(var.name == "GC_SelectedSample")
+              else if(var.name == "RENDERDOC_SelectedSample")
               {
                 if(var.type.rows == 1 && var.type.cols == 1 && var.type.varType == VarType::SInt)
                 {
@@ -703,7 +703,7 @@ bool D3D11Replay::RenderTextureInternal(TextureDisplay cfg, TexDisplayFlags flag
                           var.name.c_str());
                 }
               }
-              else if(var.name == "GC_TextureType")
+              else if(var.name == "RENDERDOC_TextureType")
               {
                 if(var.type.rows == 1 && var.type.cols == 1 && var.type.varType == VarType::UInt)
                 {
@@ -717,12 +717,12 @@ bool D3D11Replay::RenderTextureInternal(TextureDisplay cfg, TexDisplayFlags flag
                           var.name.c_str());
                 }
               }
-              else if(var.name == "GC_SelectedRangeMin")
+              else if(var.name == "RENDERDOC_SelectedRangeMin")
               {
                 float *d = (float *)(byteData + var.offset);
                 d[0] = cfg.rangeMin;
               }
-              else if(var.name == "GC_SelectedRangeMax")
+              else if(var.name == "RENDERDOC_SelectedRangeMax")
               {
                 float *d = (float *)(byteData + var.offset);
                 d[0] = cfg.rangeMax;

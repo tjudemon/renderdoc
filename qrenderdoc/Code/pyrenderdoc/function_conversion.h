@@ -110,7 +110,7 @@ inline void HandleCallbackFailure(PyObject *global_handle, ExceptionHandler exHa
     if(exHandle)
       exHandle.data().failFlag = true;
     else
-      GC_LogMessage(LogType::Error, "QTRD", __FILE__, __LINE__,
+      RENDERDOC_LogMessage(LogType::Error, "QTRD", __FILE__, __LINE__,
                            "Callback failure with no global handle and no valid parent scope!");
     return;
   }

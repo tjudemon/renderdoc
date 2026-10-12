@@ -111,12 +111,10 @@ SET(FORCE_PY_VERSION "" CACHE STRING "Force a particular version of python to be
 
 option(INTERNAL_SELF_CAPTURE "Internal option: enable self-capture" OFF)
 
-set(RDOC_BASE_NAME "gfxcap")
+set(RDOC_BASE_NAME "renderdoc")
 if(INTERNAL_SELF_CAPTURE)
     set(RDOC_BASE_NAME "rdocself")
     add_definitions(-DRDOC_SELFCAPTURE_LIMITEDAPI=1)
-elseif(WIN32)
-    set(RDOC_BASE_NAME "gfxcap")
 endif()
 string(TOUPPER ${RDOC_BASE_NAME} RDOC_BASE_NAME_UPPER)
 add_definitions(-DRDOC_BASE_NAME=${RDOC_BASE_NAME})

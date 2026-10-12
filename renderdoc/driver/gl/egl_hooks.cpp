@@ -66,7 +66,6 @@ class EGLHook : LibraryHook
 {
 public:
   EGLHook() : driver(GetEGLPlatform()) {}
-  const char *GetName() const override { return "egl"; }
   ~EGLHook()
   {
     for(auto it : extStrings)

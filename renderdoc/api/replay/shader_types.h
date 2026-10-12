@@ -220,8 +220,8 @@ DECLARE_REFLECTION_STRUCT(ShaderDirectAccess);
 
 #if !defined(SWIG)
 // similarly these need to be pre-declared for use in rdhalf
-extern "C" RENDERDOC_API float RENDERDOC_CC GC_HalfToFloat(uint16_t half);
-extern "C" RENDERDOC_API uint16_t RENDERDOC_CC GC_FloatToHalf(float flt);
+extern "C" RENDERDOC_API float RENDERDOC_CC RENDERDOC_HalfToFloat(uint16_t half);
+extern "C" RENDERDOC_API uint16_t RENDERDOC_CC RENDERDOC_FloatToHalf(float flt);
 #endif
 
 struct rdhalf
@@ -236,13 +236,13 @@ struct rdhalf
   static rdhalf make(const float &f)
   {
     rdhalf ret;
-    ret.storage = GC_FloatToHalf(f);
+    ret.storage = RENDERDOC_FloatToHalf(f);
     return ret;
   }
   void set(const uint16_t &u) { storage = u; }
-  void set(const float &f) { storage = GC_FloatToHalf(f); }
+  void set(const float &f) { storage = RENDERDOC_FloatToHalf(f); }
 #endif
-  explicit operator float() const { return GC_HalfToFloat(storage); }
+  explicit operator float() const { return RENDERDOC_HalfToFloat(storage); }
   explicit operator uint16_t() const { return storage; }
 private:
   uint16_t storage;

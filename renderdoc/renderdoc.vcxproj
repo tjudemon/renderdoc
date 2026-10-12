@@ -43,7 +43,6 @@
   <Import Project="$(SolutionDir)\util\WindowsSDKFix.props" />
   <PropertyGroup>
     <OutDir>$(SolutionDir)$(Platform)\$(Configuration)\</OutDir>
-    <TargetName>gfxcap</TargetName>
   </PropertyGroup>
   <PropertyGroup>
     <IntDir>$(SolutionDir)$(Platform)\$(Configuration)\obj\$(ProjectName)\</IntDir>
@@ -68,7 +67,7 @@
       <MinimalRebuild>false</MinimalRebuild>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <AdditionalIncludeDirectories>$(SolutionDir)renderdoc\;$(SolutionDir)renderdoc\3rdparty\</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>RDOC_BASE_NAME=$(TargetName);RENDERDOC_EXPORTS;RENDERDOC_PLATFORM_WIN32;WIN32;NDEBUG;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>RDOC_BASE_NAME=$(ProjectName);RENDERDOC_EXPORTS;RENDERDOC_PLATFORM_WIN32;WIN32;NDEBUG;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <WarningLevel>Level4</WarningLevel>
       <TreatWarningAsError>true</TreatWarningAsError>
       <DisableSpecificWarnings>4100</DisableSpecificWarnings>
@@ -816,16 +815,16 @@ namespace DXCEnumerateAndCheck {
     <Exec Command="&quot;$(DXCExecutable)&quot; &quot;$(ProjectDir)data\hlsl\fixedcol.hlsl&quot; -T ps_6_0 -DVARIANT=1 -E main -Qstrip_reflect -Fo &quot;$(DXILBakedDir)fixedcol_1.dxbc&quot;" />
     <Exec Command="&quot;$(DXCExecutable)&quot; &quot;$(ProjectDir)data\hlsl\fixedcol.hlsl&quot; -T ps_6_0 -DVARIANT=2 -E main -Qstrip_reflect -Fo &quot;$(DXILBakedDir)fixedcol_2.dxbc&quot;" />
     <Exec Command="&quot;$(DXCExecutable)&quot; &quot;$(ProjectDir)data\hlsl\fixedcol.hlsl&quot; -T ps_6_0 -DVARIANT=3 -E main -Qstrip_reflect -Fo &quot;$(DXILBakedDir)fixedcol_3.dxbc&quot;" />
-    <Exec Command="&quot;$(DXCExecutable)&quot; &quot;$(ProjectDir)data\hlsl\quadoverdraw.hlsl&quot; -T ps_6_0 -DD3D12=1 -E GC_QuadOverdrawPS -Qstrip_reflect -Fo &quot;$(DXILBakedDir)quadwrite.dxbc&quot;" />
-    <Exec Command="&quot;$(DXCExecutable)&quot; &quot;$(ProjectDir)data\hlsl\d3d12_pixelhistory.hlsl&quot; -T ps_6_0 -E GC_PrimitiveIDPS -Qstrip_reflect -Fo &quot;$(DXILBakedDir)pixelhistory_primitiveid.dxbc&quot;" />
-    <Exec Command="&quot;$(DXCExecutable)&quot; &quot;$(ProjectDir)data\hlsl\d3d12_pixelhistory.hlsl&quot; -T ps_6_0 -DRT=0 -E GC_PixelHistoryFixedColPS -Qstrip_reflect -Fo &quot;$(DXILBakedDir)pixelhistory_fixedcol_0.dxbc&quot;" />
-    <Exec Command="&quot;$(DXCExecutable)&quot; &quot;$(ProjectDir)data\hlsl\d3d12_pixelhistory.hlsl&quot; -T ps_6_0 -DRT=1 -E GC_PixelHistoryFixedColPS -Qstrip_reflect -Fo &quot;$(DXILBakedDir)pixelhistory_fixedcol_1.dxbc&quot;" />
-    <Exec Command="&quot;$(DXCExecutable)&quot; &quot;$(ProjectDir)data\hlsl\d3d12_pixelhistory.hlsl&quot; -T ps_6_0 -DRT=2 -E GC_PixelHistoryFixedColPS -Qstrip_reflect -Fo &quot;$(DXILBakedDir)pixelhistory_fixedcol_2.dxbc&quot;" />
-    <Exec Command="&quot;$(DXCExecutable)&quot; &quot;$(ProjectDir)data\hlsl\d3d12_pixelhistory.hlsl&quot; -T ps_6_0 -DRT=3 -E GC_PixelHistoryFixedColPS -Qstrip_reflect -Fo &quot;$(DXILBakedDir)pixelhistory_fixedcol_3.dxbc&quot;" />
-    <Exec Command="&quot;$(DXCExecutable)&quot; &quot;$(ProjectDir)data\hlsl\d3d12_pixelhistory.hlsl&quot; -T ps_6_0 -DRT=4 -E GC_PixelHistoryFixedColPS -Qstrip_reflect -Fo &quot;$(DXILBakedDir)pixelhistory_fixedcol_4.dxbc&quot;" />
-    <Exec Command="&quot;$(DXCExecutable)&quot; &quot;$(ProjectDir)data\hlsl\d3d12_pixelhistory.hlsl&quot; -T ps_6_0 -DRT=5 -E GC_PixelHistoryFixedColPS -Qstrip_reflect -Fo &quot;$(DXILBakedDir)pixelhistory_fixedcol_5.dxbc&quot;" />
-    <Exec Command="&quot;$(DXCExecutable)&quot; &quot;$(ProjectDir)data\hlsl\d3d12_pixelhistory.hlsl&quot; -T ps_6_0 -DRT=6 -E GC_PixelHistoryFixedColPS -Qstrip_reflect -Fo &quot;$(DXILBakedDir)pixelhistory_fixedcol_6.dxbc&quot;" />
-    <Exec Command="&quot;$(DXCExecutable)&quot; &quot;$(ProjectDir)data\hlsl\d3d12_pixelhistory.hlsl&quot; -T ps_6_0 -DRT=7 -E GC_PixelHistoryFixedColPS -Qstrip_reflect -Fo &quot;$(DXILBakedDir)pixelhistory_fixedcol_7.dxbc&quot;" />
+    <Exec Command="&quot;$(DXCExecutable)&quot; &quot;$(ProjectDir)data\hlsl\quadoverdraw.hlsl&quot; -T ps_6_0 -DD3D12=1 -E RENDERDOC_QuadOverdrawPS -Qstrip_reflect -Fo &quot;$(DXILBakedDir)quadwrite.dxbc&quot;" />
+    <Exec Command="&quot;$(DXCExecutable)&quot; &quot;$(ProjectDir)data\hlsl\d3d12_pixelhistory.hlsl&quot; -T ps_6_0 -E RENDERDOC_PrimitiveIDPS -Qstrip_reflect -Fo &quot;$(DXILBakedDir)pixelhistory_primitiveid.dxbc&quot;" />
+    <Exec Command="&quot;$(DXCExecutable)&quot; &quot;$(ProjectDir)data\hlsl\d3d12_pixelhistory.hlsl&quot; -T ps_6_0 -DRT=0 -E RENDERDOC_PixelHistoryFixedColPS -Qstrip_reflect -Fo &quot;$(DXILBakedDir)pixelhistory_fixedcol_0.dxbc&quot;" />
+    <Exec Command="&quot;$(DXCExecutable)&quot; &quot;$(ProjectDir)data\hlsl\d3d12_pixelhistory.hlsl&quot; -T ps_6_0 -DRT=1 -E RENDERDOC_PixelHistoryFixedColPS -Qstrip_reflect -Fo &quot;$(DXILBakedDir)pixelhistory_fixedcol_1.dxbc&quot;" />
+    <Exec Command="&quot;$(DXCExecutable)&quot; &quot;$(ProjectDir)data\hlsl\d3d12_pixelhistory.hlsl&quot; -T ps_6_0 -DRT=2 -E RENDERDOC_PixelHistoryFixedColPS -Qstrip_reflect -Fo &quot;$(DXILBakedDir)pixelhistory_fixedcol_2.dxbc&quot;" />
+    <Exec Command="&quot;$(DXCExecutable)&quot; &quot;$(ProjectDir)data\hlsl\d3d12_pixelhistory.hlsl&quot; -T ps_6_0 -DRT=3 -E RENDERDOC_PixelHistoryFixedColPS -Qstrip_reflect -Fo &quot;$(DXILBakedDir)pixelhistory_fixedcol_3.dxbc&quot;" />
+    <Exec Command="&quot;$(DXCExecutable)&quot; &quot;$(ProjectDir)data\hlsl\d3d12_pixelhistory.hlsl&quot; -T ps_6_0 -DRT=4 -E RENDERDOC_PixelHistoryFixedColPS -Qstrip_reflect -Fo &quot;$(DXILBakedDir)pixelhistory_fixedcol_4.dxbc&quot;" />
+    <Exec Command="&quot;$(DXCExecutable)&quot; &quot;$(ProjectDir)data\hlsl\d3d12_pixelhistory.hlsl&quot; -T ps_6_0 -DRT=5 -E RENDERDOC_PixelHistoryFixedColPS -Qstrip_reflect -Fo &quot;$(DXILBakedDir)pixelhistory_fixedcol_5.dxbc&quot;" />
+    <Exec Command="&quot;$(DXCExecutable)&quot; &quot;$(ProjectDir)data\hlsl\d3d12_pixelhistory.hlsl&quot; -T ps_6_0 -DRT=6 -E RENDERDOC_PixelHistoryFixedColPS -Qstrip_reflect -Fo &quot;$(DXILBakedDir)pixelhistory_fixedcol_6.dxbc&quot;" />
+    <Exec Command="&quot;$(DXCExecutable)&quot; &quot;$(ProjectDir)data\hlsl\d3d12_pixelhistory.hlsl&quot; -T ps_6_0 -DRT=7 -E RENDERDOC_PixelHistoryFixedColPS -Qstrip_reflect -Fo &quot;$(DXILBakedDir)pixelhistory_fixedcol_7.dxbc&quot;" />
   </Target>
   <ItemGroup>
     <Natvis Include="renderdoc.natvis" />
@@ -850,15 +849,15 @@ namespace DXCEnumerateAndCheck {
       <MinorVersion>$(VersionFile.Substring($(MinorVersionStart)).Split('
 ')[0].Split(' ')[2])</MinorVersion>
     </PropertyGroup>
-    <Message Text="Processing layer JSON file for GfxCore $(MajorVersion).$(MinorVersion)" Importance="High" />
+    <Message Text="Processing layer JSON file for RenderDoc $(MajorVersion).$(MinorVersion)" Importance="High" />
     <!-- Read the template json, replace the major/minor versions -->
     <PropertyGroup>
-      <VulkanLayerName>VK_LAYER_$(TargetName.ToUpper())_Capture</VulkanLayerName>
-      <VulkanEnableVar>ENABLE_VULKAN_$(TargetName)_CAPTURE</VulkanEnableVar>
-      <JSONContents>$([System.IO.File]::ReadAllText('$(SolutionDir)renderdoc/driver/vulkan/renderdoc.json').Replace('@RENDERDOC_VERSION_MAJOR@', '$(MajorVersion)').Replace('@RENDERDOC_VERSION_MINOR@', '$(MinorVersion)').Replace('@VULKAN_LAYER_MODULE_PATH@', '.\\$(TargetName).dll').Replace('@VULKAN_LAYER_NAME@', $(VulkanLayerName)).Replace('@VULKAN_ENABLE_VAR@', $(VulkanEnableVar.ToUpper())))</JSONContents>
+      <VulkanLayerName>VK_LAYER_$(ProjectName.ToUpper())_Capture</VulkanLayerName>
+      <VulkanEnableVar>ENABLE_VULKAN_$(ProjectName)_CAPTURE</VulkanEnableVar>
+      <JSONContents>$([System.IO.File]::ReadAllText('$(SolutionDir)renderdoc/driver/vulkan/renderdoc.json').Replace('@RENDERDOC_VERSION_MAJOR@', '$(MajorVersion)').Replace('@RENDERDOC_VERSION_MINOR@', '$(MinorVersion)').Replace('@VULKAN_LAYER_MODULE_PATH@', '.\\$(ProjectName).dll').Replace('@VULKAN_LAYER_NAME@', $(VulkanLayerName)).Replace('@VULKAN_ENABLE_VAR@', $(VulkanEnableVar.ToUpper())))</JSONContents>
     </PropertyGroup>
     <!-- Write it out to the output directory -->
-    <WriteLinesToFile File="$(OutDir)$(TargetName).json" Lines="$(JSONContents)" Overwrite="true" />
+    <WriteLinesToFile File="$(OutDir)$(ProjectName).json" Lines="$(JSONContents)" Overwrite="true" />
   </Target>
   <ItemGroup>
     <ProjectReference Include="driver\d3d11\renderdoc_d3d11.vcxproj">

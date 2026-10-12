@@ -660,8 +660,6 @@ endif()
 
 if(INTERNAL_SELF_CAPTURE)
     set_target_properties(renderdoc PROPERTIES OUTPUT_NAME "rdocself")
-elseif(WIN32)
-    set_target_properties(renderdoc PROPERTIES OUTPUT_NAME "gfxcap")
 endif()
 
 if(ANDROID)

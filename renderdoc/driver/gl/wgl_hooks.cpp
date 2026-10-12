@@ -30,7 +30,6 @@ class WGLHook : LibraryHook
 {
 public:
   WGLHook() : driver(GetGLPlatform()) {}
-  const char *GetName() const override { return "wgl"; }
   void RegisterHooks();
 
   WrappedOpenGL driver;

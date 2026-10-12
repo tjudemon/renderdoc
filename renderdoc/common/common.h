@@ -457,7 +457,7 @@ enum class LOGTYPE_ENUM_NAME : uint32_t
 void rdclogprint_int(LogType type, const char *fullMsg, const char *msg);
 
 #if !defined(RDCLOG_PROJECT)
-#define RDCLOG_PROJECT "GCAP"
+#define RDCLOG_PROJECT "RDOC"
 #endif
 
 // printf() style main logger function

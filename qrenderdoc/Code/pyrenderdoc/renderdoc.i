@@ -132,7 +132,7 @@ VA_IGNORE_REST_OF_FILE
 %ignore rdhalf;
 %ignore bytebuf;
 
-// special handling for GC_GetSupportedDeviceProtocols to transform output parameter to a return value
+// special handling for RENDERDOC_GetSupportedDeviceProtocols to transform output parameter to a return value
 %typemap(in, numinputs=0) rdcarray<rdcstr> *supportedProtocols { $1 = new rdcarray<rdcstr>; }
 %typemap(argout) rdcarray<rdcstr> *supportedProtocols {
   $result = ConvertToPy(*$1);
@@ -140,7 +140,7 @@ VA_IGNORE_REST_OF_FILE
 }
 %typemap(freearg) rdcarray<rdcstr> *supportedProtocols { }
 
-// same for GC_CreateRemoteServerConnection
+// same for RENDERDOC_CreateRemoteServerConnection
 %typemap(in, numinputs=0) IRemoteServer **rend (IRemoteServer *outRenderer) {
   outRenderer = NULL;
   $1 = &outRenderer;

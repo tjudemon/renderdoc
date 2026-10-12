@@ -245,48 +245,17 @@ public:
 class DXGIHook : LibraryHook
 {
 public:
-  const char *GetName() const override { return "dxgi"; }
-
   void RegisterHooks()
   {
     RDCLOG("Registering DXGI hooks");
 
-    // Experimental diagnostic (exp I): GFXCAP_NO_DXGI_HOOKS=1 skips the entire dxgi hook
-    // set. Without them DXGI factory wrapping does not happen and frames cannot be
-    // captured - this switch only exists to bisect which hook the anti-cheat reacts to.
-    wchar_t noDXGIBuf[8] = {};
-    bool noDXGI = false;
-    if(GetEnvironmentVariableW(L"GFXCAP_NO_DXGI_HOOKS", noDXGIBuf, 8) > 0)
-      noDXGI = (noDXGIBuf[0] == L'1');
-
-    if(noDXGI)
-    {
-      RDCLOG("GFXCAP_NO_DXGI_HOOKS set - skipping DXGI hooks");
-      return;
-    }
-
     LibraryHooks::RegisterLibraryHook("dxgi.dll", NULL);
 
-    // Experimental diagnostic (exp I3b): GFXCAP_NO_DXGI_IAT=1 skips only the five dxgi
-    // IAT hooks (CreateDXGIFactory*/DXGIGetDebugInterface*). This isolates the dxgi IAT
-    // rewrite from the rest of the hook registration.
-    wchar_t noDXGIIatBuf[8] = {};
-    bool noDXGIIat = false;
-    if(GetEnvironmentVariableW(L"GFXCAP_NO_DXGI_IAT", noDXGIIatBuf, 8) > 0)
-      noDXGIIat = (noDXGIIatBuf[0] == L'1');
-
-    if(noDXGIIat)
-    {
-      RDCLOG("GFXCAP_NO_DXGI_IAT set - skipping DXGI IAT hooks");
-    }
-    else
-    {
-      CreateDXGIFactory.Register("dxgi.dll", "CreateDXGIFactory", CreateDXGIFactory_hook);
-      CreateDXGIFactory1.Register("dxgi.dll", "CreateDXGIFactory1", CreateDXGIFactory1_hook);
-      CreateDXGIFactory2.Register("dxgi.dll", "CreateDXGIFactory2", CreateDXGIFactory2_hook);
-      GetDebugInterface.Register("dxgi.dll", "DXGIGetDebugInterface", DXGIGetDebugInterface_hook);
-      GetDebugInterface1.Register("dxgi.dll", "DXGIGetDebugInterface1", DXGIGetDebugInterface1_hook);
-    }
+    CreateDXGIFactory.Register("dxgi.dll", "CreateDXGIFactory", CreateDXGIFactory_hook);
+    CreateDXGIFactory1.Register("dxgi.dll", "CreateDXGIFactory1", CreateDXGIFactory1_hook);
+    CreateDXGIFactory2.Register("dxgi.dll", "CreateDXGIFactory2", CreateDXGIFactory2_hook);
+    GetDebugInterface.Register("dxgi.dll", "DXGIGetDebugInterface", DXGIGetDebugInterface_hook);
+    GetDebugInterface1.Register("dxgi.dll", "DXGIGetDebugInterface1", DXGIGetDebugInterface1_hook);
   }
 
 private:
