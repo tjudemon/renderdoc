@@ -379,8 +379,7 @@ PythonShell::PythonShell(ICaptureContext &ctx, QWidget *parent)
   QObject::connect(m_Watcher, &QFileSystemWatcher::directoryChanged, this,
                    &PythonShell::updateExtensionProjects);
 
-  QTimer *pyStatusTimer = new QTimer(this);
-  QObject::connect(pyStatusTimer, &QTimer::timeout, [this]() {
+  QObject::connect(PythonContext::GetExtensionContext(), &PythonContext::extensionsUpdated, [this]() {
     QList<QString> curModExts;
 
     for(const ExtensionMetadata &m : m_Ctx.Extensions().GetInstalledExtensions())
@@ -398,7 +397,10 @@ PythonShell::PythonShell(ICaptureContext &ctx, QWidget *parent)
       updateExtensionProjects();
       m_ModifiedExtensions = curModExts;
     }
+  });
 
+  QTimer *pyStatusTimer = new QTimer(this);
+  QObject::connect(pyStatusTimer, &QTimer::timeout, [this]() {
     bool hasDebugger = PythonContext::IsDebuggerConnected();
 
     if(m_DebuggerAttached != hasDebugger)
@@ -475,6 +477,11 @@ PythonShell::PythonShell(ICaptureContext &ctx, QWidget *parent)
 
   updateRecentFiles(false);
   updateExtensionProjects();
+
+  // on first launch we could be creating the python shell before extensions are loaded while
+  // initialising the UI. Refresh the extension projects after a short delay to pick up any
+  // additional information on loading status.
+  QTimer::singleShot(200, [this]() { updateExtensionProjects(); });
 
   ui->projectExplorer->endUpdate();
 
@@ -729,11 +736,17 @@ void PythonShell::updateExtensionProjects()
     if(ext.hasChanges)
       name += tr(" (Reload required)");
 
+    if(ext.failedLoad)
+      name += tr(" (Failed to load)");
+
     RDTreeWidgetItem *root = new RDTreeWidgetItem({name});
     root->setData(0, Qt::UserRole + 1, ext.package);
 
     if(ext.hasChanges)
       root->setItalic(true);
+
+    if(m_Ctx.Config().AlwaysLoad_Extensions.contains(ext.package))
+      root->setBold(true);
 
     addExtensionDirItems(root, QDir(ext.filePath));
 
@@ -1038,6 +1051,8 @@ void PythonShell::updateNonDebugWarning()
         edit->setWarning(
             tr("External debugger will not work for unsaved files. "
                "Save script to disk to allow debugging."));
+      else
+        edit->setWarning(QString());
     }
     else
     {
@@ -1794,8 +1809,11 @@ void PythonShell::removeEditor(EditorWrapper *editor)
 
 void PythonShell::extensionLoaded(const QString &extension)
 {
-  ui->outputContext->addItem(tr("Extension %1").arg(extension));
-  loadedExtensions.push_back(extension);
+  if(!loadedExtensions.contains(extension))
+  {
+    ui->outputContext->addItem(tr("Extension %1").arg(extension));
+    loadedExtensions.push_back(extension);
+  }
 }
 
 void PythonShell::editor_contextMenu(const QPoint &pos)
@@ -1919,6 +1937,9 @@ void PythonShell::projectExplorer_contextMenu(const QPoint &pos)
   QAction createExtension(tr("Create &New Extension"), this);
   createExtension.setIcon(Icons::plugin_add());
 
+  QAction refreshExtensionList(tr("&Refresh Extension List"), this);
+  refreshExtensionList.setIcon(Icons::update());
+
   QObject::connect(&expandAll, &QAction::triggered,
                    [this, item]() { ui->projectExplorer->expandAllItems(item); });
 
@@ -1949,7 +1970,7 @@ void PythonShell::projectExplorer_contextMenu(const QPoint &pos)
       {
         if(m.package == rdcstr(itemPath))
         {
-          reloadExtension.setEnabled(m.hasChanges);
+          reloadExtension.setEnabled(m.hasChanges || m.failedLoad);
           diskLocation = QFileInfo(m.filePath).absoluteFilePath();
           break;
         }
@@ -2005,8 +2026,11 @@ void PythonShell::projectExplorer_contextMenu(const QPoint &pos)
     contextMenu.addSeparator();
 
     contextMenu.addAction(&createExtension);
+    contextMenu.addAction(&refreshExtensionList);
 
     QObject::connect(&createExtension, &QAction::triggered, [this]() { createExtension_clicked(); });
+    QObject::connect(&refreshExtensionList, &QAction::triggered,
+                     [this]() { updateExtensionProjects(); });
   }
 
   RDDialog::show(&contextMenu, ui->projectExplorer->viewport()->mapToGlobal(pos));
@@ -2398,7 +2422,7 @@ QString PythonShell::scriptHeader()
 The 'pyrenderdoc' object is the current CaptureContext instance.
 The 'renderdoc' and 'qrenderdoc' modules are available.
 Documentation is available: https://renderdoc.org/docs/python_api/index.html)")
-      .arg(interactiveContext->versionString());
+      .arg(PythonContext::versionString());
 }
 
 void PythonShell::appendText(QTextEdit *output, const QString &text)

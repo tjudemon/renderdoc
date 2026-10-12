@@ -370,6 +370,14 @@ This will always be false if the extension is unloaded.
 :type: bool
 )");
   bool hasChanges = false;
+
+  DOCUMENT(R"(A flag indicating that the extension failed to load properly.
+
+This will always be false if the extension is unloaded.
+
+:type: bool
+)");
+  bool failedLoad = false;
 };
 
 DECLARE_REFLECTION_STRUCT(ExtensionMetadata);
@@ -440,7 +448,7 @@ is a layout type widget, to allow customising how children are added. By default
 added in a vertical layout.
 
 :param str windowTitle: The title of any window with this widget as its root.
-:param Callable[[CaptureContext, QWidget, str], None] closed=None: **Optional parameter**. A callback
+:param Optional[Callable[[CaptureContext, QWidget, str], None]] closed=None: **Optional parameter**. A callback
   that will be called when the widget is closed by the user.
   This implicitly deletes the widget and all its children, which will no longer be valid even if a
   handle to them exists.
@@ -668,6 +676,23 @@ added anywhere.
 )");
   virtual void InsertWidget(QWidget *parent, int32_t index, QWidget *child) = 0;
 
+  DOCUMENT(R"(Set the internal spacing in pixels between items. If the widget is not a layout
+(either grid or horizontal/vertical) this call will have no effect.
+
+:param QWidget layout: The layout widget.
+:param int spacing: The spacing in pixels to use between items
+)");
+  virtual void SetLayoutSpacing(QWidget *layout, int32_t spacing) = 0;
+
+  DOCUMENT(R"(Set the external margins on the outside of all of the items in the layout. If
+the widget is not a layout (either grid or horizontal/vertical) this call will have no effect.
+
+:param QWidget layout: The layout widget.
+:param int horizontal: The horizontal margins on the left and right.
+:param int vertical: The vertical margins on the top and bottom.
+)");
+  virtual void SetLayoutMargins(QWidget *layout, int32_t horizontal, int32_t vertical) = 0;
+
   // widget manipulation
 
   DOCUMENT(R"(Set the 'text' of a widget. How this manifests depends on the type of the widget, for
@@ -679,6 +704,17 @@ add text next to it.
 )");
   virtual void SetWidgetText(QWidget *widget, const rdcstr &text) = 0;
 
+  DOCUMENT(R"(Appends to the 'text' of a widget. For most widgets this will not be different from
+getting the text with :meth:`GetWidgetText`, appending to the string, and setting with :meth:`SetWidgetText`
+but for multi-line widgets like text edits this can give a better experience with better scrolling.
+
+This will also scroll to and move the cursor to the end of the text.
+
+:param QWidget widget: The widget to append text for.
+:param str text: The text to append to the widget's text.
+)");
+  virtual void AppendText(QWidget *widget, const rdcstr &text) = 0;
+
   DOCUMENT(R"(Return the current text of a widget. See :meth:`SetWidgetText`.
 
 :param QWidget widget: The widget to query.
@@ -687,7 +723,24 @@ add text next to it.
 )");
   virtual rdcstr GetWidgetText(QWidget *widget) = 0;
 
+  DOCUMENT(R"(Scroll the widget's vertical scrollbar to the top. If the widget has no scrollbar
+this will do nothing
+
+:param QWidget widget: The widget to scroll in.
+)");
+  virtual void ScrollToTop(QWidget *widget) = 0;
+
+  DOCUMENT(R"(Scroll the widget's vertical scrollbar to the bottom. If the widget has no scrollbar
+this will do nothing
+
+:param QWidget widget: The widget to scroll in.
+)");
+  virtual void ScrollToBottom(QWidget *widget) = 0;
+
   DOCUMENT(R"(Change the font properties of a widget.
+
+The font string can be set either to '_default' or '_fixed' to choose the user-selected default
+font or monospaced fonts respectively.
 
 :param QWidget widget: The widget to change font of.
 :param str font: The new font family to use, or an empty string to leave the font family the same.
@@ -756,7 +809,7 @@ The widget needs to be added to a parent to become part of a panel or window.
 
   DOCUMENT(R"(Create a normal button widget.
 
-:param Callable[[CaptureContext, QWidget, str], None] pressed=None: **Optional parameter**. Callback
+:param Optional[Callable[[CaptureContext, QWidget, str], None]] pressed=None: **Optional parameter**. Callback
   to be called when the button is pressed.
   Callback function signature must match :func:`WidgetCallback`.
 :return: The handle to the newly created widget.
@@ -831,8 +884,8 @@ When a capture is closed and all outputs are destroyed, the widget will automati
 output so there is no need to do that manually.
 
 :param QWidget widget: The widget to set the output for.
-:param renderdoc.ReplayOutput output: The new output to set, or ``None`` to unset any previous
-  output.
+:param Optional[renderdoc.ReplayOutput] output: The new output to set, or ``None`` to unset any
+  previous output.
 )");
   virtual void SetWidgetReplayOutput(QWidget *widget, IReplayOutput *output) = 0;
 
@@ -854,7 +907,7 @@ checkerboard to be rendered instead. This is the default behaviour when a widget
   DOCUMENT(R"(Create a checkbox widget which can be toggled between unchecked and checked. When
 created the checkbox is unchecked.
 
-:param Callable[[CaptureContext, QWidget, str], None] changed=None: **Optional parameter**. Callback
+:param Optional[Callable[[CaptureContext, QWidget, str], None]] changed=None: **Optional parameter**. Callback
   to be called when the widget is toggled.
   Callback function signature must match :func:`WidgetCallback`.
 :return: The handle to the newly created widget.
@@ -868,7 +921,7 @@ at most one radio box in any group of sibling radio boxes being checked.
 Upon creation the radio box is unchecked, even in a group of other radio boxes that are unchecked.
 If you want a default radio box to be checked, you should use :meth:`SetWidgetChecked`.
 
-:param Callable[[CaptureContext, QWidget, str], None] changed=None: **Optional parameter**. Callback
+:param Optional[Callable[[CaptureContext, QWidget, str], None]] changed=None: **Optional parameter**. Callback
   to be called when the widget is toggled.
   Callback function signature must match :func:`WidgetCallback`.
 :return: The handle to the newly created widget.
@@ -940,7 +993,7 @@ happen.
 
 :param bool singleLine: ``True`` if the widget should be a single-line entry, otherwise it is a
   multi-line text box.
-:param Callable[[CaptureContext, QWidget, str], None] changed=None: **Optional parameter**. Callback
+:param Optional[Callable[[CaptureContext, QWidget, str], None]] changed=None: **Optional parameter**. Callback
   to be called when the text in the textbox is changed.
   Callback function signature must match :func:`WidgetCallback`.
 :return: The handle to the newly created widget.
@@ -955,7 +1008,7 @@ When created there are no pre-defined entries in the drop-down section. This can
 
 :param bool editable: ``True`` if the widget should allow the user to enter any text they wish as
   well as being able to select a pre-defined entry.
-:param Callable[[CaptureContext, QWidget, str], None] changed=None: **Optional parameter**. Callback
+:param Optional[Callable[[CaptureContext, QWidget, str], None]] changed=None: **Optional parameter**. Callback
   to be called when the text in the combobox is changed. This
   will be called both when a new option is selected or when the user edits the text.
   Callback function signature must match :func:`WidgetCallback`.

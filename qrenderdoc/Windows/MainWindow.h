@@ -84,6 +84,7 @@ public:
   void RegisterShortcut(const rdcstr &shortcut, QWidget *widget, ShortcutCallback callback) override;
   void UnregisterShortcut(const rdcstr &shortcut, QWidget *widget) override;
   void BringToFront() override;
+  bool PromptCloseCapture() override;
 
   // ICaptureViewer
   void OnCaptureLoaded() override;
@@ -118,7 +119,6 @@ public:
   void ShowLiveCapture(LiveCapture *live);
   void LiveCaptureClosed(LiveCapture *live);
 
-  bool PromptCloseCapture();
   bool PromptSaveCaptureAs();
   bool SaveCurrentCapture(QString saveFilename);
 
@@ -203,10 +203,11 @@ private slots:
   void ClearRecentCaptureFiles();
   void ClearRecentCaptureSettings();
 
-  void PythonStatusUpdate();
-
   void networkRequestFailed(QUrl url, QString error);
   void networkRequestCompleted(QUrl url, QByteArray data);
+
+public slots:
+  void PythonStatusBarUpdate();
 
 signals:
   void networkRequestGet(QUrl url);
@@ -255,6 +256,8 @@ private:
   QProgressBar *statusProgress;
   RDMenu *contextChooserMenu;
   QToolButton *contextChooser;
+
+  bool m_CurPyDebug = false;
 
   QAction *updateAction = NULL;
 

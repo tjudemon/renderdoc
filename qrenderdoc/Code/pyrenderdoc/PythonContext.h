@@ -88,7 +88,7 @@ public:
 
   bool CheckInterfaces(rdcstr &log);
 
-  QString versionString();
+  static QString versionString();
 
   template <typename T>
   void setGlobal(const char *varName, T *object)
@@ -146,6 +146,7 @@ signals:
   void textOutput(const QString &extension, bool isStdError, const QString &output);
 
   void extensionLoaded(const QString &extension);
+  void extensionsUpdated();
 
 public slots:
   void executeString(const QString &source);

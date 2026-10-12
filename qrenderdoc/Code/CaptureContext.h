@@ -435,6 +435,8 @@ private:
   QList<QObject *> m_PendingExtensionObjects;
   QMap<rdcstr, QList<QObject *>> m_ExtensionObjects;
   rdcarray<rdcstr> m_DirtyExtensions;
+  rdcarray<rdcstr> m_FailedExtensions;
+  rdcarray<rdcstr> m_BadVerExtensions;
 
   QList<QPointer<RegisteredMenuItem>> m_RegisteredMenuItems;
 

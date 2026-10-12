@@ -170,6 +170,14 @@ struct MiniQtInvoker : UIThreadInvoker<IMiniQtHelper>
   {
     InvokeVoidFunction(&IMiniQtHelper::InsertWidget, parent, index, child);
   }
+  void SetLayoutSpacing(QWidget *layout, int spacing)
+  {
+    InvokeVoidFunction(&IMiniQtHelper::SetLayoutSpacing, layout, spacing);
+  }
+  void SetLayoutMargins(QWidget *layout, int horizontal, int vertical)
+  {
+    InvokeVoidFunction(&IMiniQtHelper::SetLayoutMargins, layout, horizontal, vertical);
+  }
 
   // widget manipulation
 
@@ -177,9 +185,19 @@ struct MiniQtInvoker : UIThreadInvoker<IMiniQtHelper>
   {
     InvokeVoidFunction(&IMiniQtHelper::SetWidgetText, widget, text);
   }
+  void AppendText(QWidget *widget, const rdcstr &text)
+  {
+    InvokeVoidFunction(&IMiniQtHelper::AppendText, widget, text);
+  }
   rdcstr GetWidgetText(QWidget *widget)
   {
     return InvokeRetFunction<rdcstr>(&IMiniQtHelper::GetWidgetText, widget);
+  }
+
+  void ScrollToTop(QWidget *widget) { InvokeVoidFunction(&IMiniQtHelper::ScrollToTop, widget); }
+  void ScrollToBottom(QWidget *widget)
+  {
+    InvokeVoidFunction(&IMiniQtHelper::ScrollToBottom, widget);
   }
 
   void SetWidgetFont(QWidget *widget, const rdcstr &font, int32_t fontSize, bool bold, bool italic)
@@ -483,20 +501,47 @@ struct ReplayControllerInvoker : IReplayController
     return InvokeRetFunction<IReplayOutput *>(&IReplayController::CreateOutput, window, type);
   }
 
-  void Shutdown() {}
+  void Shutdown()
+  {
+    if(!GUIInvoke::onUIThread())
+    {
+      void *ctx = PythonContext::PausePythonThreading();
+      GUIInvoke::blockcall(m_Ctx.GetMainWindow()->Widget(), [this]() { m_Ctx.CloseCapture(); });
+      PythonContext::ResumePythonThreading(ctx);
+      return;
+    }
+    m_Ctx.CloseCapture();
+  }
 
-  void ReplayLoop(WindowingData window, ResourceId texid) {}
+  void ReplayLoop(WindowingData window, ResourceId texid)
+  {
+    return InvokeVoidFunction(&IReplayController::ReplayLoop, window, texid);
+  }
 
   rdcstr CreateRGPProfile(WindowingData window)
   {
     return InvokeRetFunction<rdcstr>(&IReplayController::CreateRGPProfile, window);
   }
 
-  void CancelReplayLoop() {}
+  void CancelReplayLoop() { return InvokeVoidFunction(&IReplayController::CancelReplayLoop); }
 
-  void FileChanged() {}
+  void FileChanged() { return InvokeVoidFunction(&IReplayController::FileChanged); }
 
-  void SetFrameEvent(uint32_t eventId, bool force) {}
+  void SetFrameEvent(uint32_t eventId, bool force)
+  {
+    // go through the context so the UI stays up to date
+    if(!GUIInvoke::onUIThread())
+    {
+      void *ctx = PythonContext::PausePythonThreading();
+      GUIInvoke::blockcall(m_Ctx.GetMainWindow()->Widget(), [this, eventId, force]() {
+        m_Ctx.SetEventID({}, eventId, eventId, force);
+      });
+      PythonContext::ResumePythonThreading(ctx);
+      return;
+    }
+
+    m_Ctx.SetEventID({}, eventId, eventId, force);
+  }
 
   const D3D11Pipe::State *GetD3D11PipelineState()
   {
@@ -561,7 +606,10 @@ struct ReplayControllerInvoker : IReplayController
     return InvokeRetFunction<rdcstr>(&IReplayController::DisassembleShader, pipeline, refl, target);
   }
 
-  void SetCustomShaderIncludes(const rdcarray<rdcstr> &directories) {}
+  void SetCustomShaderIncludes(const rdcarray<rdcstr> &directories)
+  {
+    return InvokeVoidFunction(&IReplayController::SetCustomShaderIncludes, directories);
+  }
 
   rdcpair<ResourceId, rdcstr> BuildCustomShader(const rdcstr &entry, ShaderEncoding sourceEncoding,
                                                 bytebuf source,
@@ -572,7 +620,10 @@ struct ReplayControllerInvoker : IReplayController
         &IReplayController::BuildCustomShader, entry, sourceEncoding, source, compileFlags, type);
   }
 
-  void FreeCustomShader(ResourceId id) {}
+  void FreeCustomShader(ResourceId id)
+  {
+    return InvokeVoidFunction(&IReplayController::FreeCustomShader, id);
+  }
 
   rdcpair<ResourceId, rdcstr> BuildTargetShader(const rdcstr &entry, ShaderEncoding sourceEncoding,
                                                 bytebuf source,
@@ -599,15 +650,27 @@ struct ReplayControllerInvoker : IReplayController
         &IReplayController::GetCustomShaderSourcePrefixes);
   }
 
-  void ReplaceResource(ResourceId original, ResourceId replacement) {}
+  void ReplaceResource(ResourceId original, ResourceId replacement)
+  {
+    return InvokeVoidFunction(&IReplayController::ReplaceResource, original, replacement);
+  }
 
-  void ClearReplayCache() {}
+  void ClearReplayCache() { return InvokeVoidFunction(&IReplayController::ClearReplayCache); }
 
-  void ReloadShaderDebugInformation() {}
+  void ReloadShaderDebugInformation()
+  {
+    return InvokeVoidFunction(&IReplayController::ReloadShaderDebugInformation);
+  }
 
-  void RemoveReplacement(ResourceId id) {}
+  void RemoveReplacement(ResourceId id)
+  {
+    return InvokeVoidFunction(&IReplayController::RemoveReplacement, id);
+  }
 
-  void FreeTargetResource(ResourceId id) {}
+  void FreeTargetResource(ResourceId id)
+  {
+    return InvokeVoidFunction(&IReplayController::FreeTargetResource, id);
+  }
 
   FrameDescription GetFrameInfo()
   {
@@ -619,7 +682,7 @@ struct ReplayControllerInvoker : IReplayController
     return InvokeRetRefFunction<const SDFile>(&IReplayController::GetStructuredFile);
   }
 
-  void AddFakeMarkers() {}
+  void AddFakeMarkers() { return InvokeVoidFunction(&IReplayController::AddFakeMarkers); }
 
   const rdcarray<ActionDescription> &GetRootActions()
   {
@@ -797,6 +860,7 @@ struct IMainWindowInvoker : UIThreadInvoker<IMainWindow>
     return InvokeVoidFunction(&IMainWindow::UnregisterShortcut, shortcut, widget);
   }
   void BringToFront() { return InvokeVoidFunction(&IMainWindow::BringToFront); }
+  bool PromptCloseCapture() { return InvokeRetFunction<bool>(&IMainWindow::PromptCloseCapture); }
 };
 
 struct IEventBrowserInvoker : UIThreadInvoker<IEventBrowser>

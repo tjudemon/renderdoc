@@ -990,6 +990,11 @@ void Reflector::CheckDebuggable(bool &debuggable, rdcstr &debugStatus) const
       {
         if(innertype->length == Id())
         {
+          // unbounded SSBO is supported
+          const DataType *elementType = &dataTypes[innertype->InnerType()];
+          if(decorations[elementType->id].flags & Decorations::BufferBlock)
+            continue;
+
           debuggable = false;
           rdcstr name = strings[v.id];
           if(name.empty())
@@ -3313,7 +3318,7 @@ ShaderVariable Debugger::MakePointerVariable(Id id, const ShaderVariable *v, uin
 }
 
 ShaderVariable Debugger::MakeCompositePointer(const ShaderVariable &base, Id id,
-                                              rdcarray<uint32_t> &indices) const
+                                              const rdcarray<uint32_t> &indices) const
 {
   const ShaderVariable *leaf = &base;
 
@@ -3760,6 +3765,10 @@ DeviceOpResult Debugger::ReadFromPointer(const ShaderVariable &ptr, ShaderVariab
           if(it != idToPointerType.end())
           {
             var.SetTypedPointer(var.value.u64v[0], this->apiWrapper->GetShaderID(), it->second);
+            if(dec.flags & Decorations::HasMatrixStride)
+              setMatrixStride(var, dec.matrixStride);
+            if(dec.flags & Decorations::HasArrayStride)
+              setArrayStride(var, dec.arrayStride);
           }
           else
           {
@@ -3767,6 +3776,8 @@ DeviceOpResult Debugger::ReadFromPointer(const ShaderVariable &ptr, ShaderVariab
             enablePointerFlags(var, PointerFlags::DereferencedPhysical);
             setMatrixStride(var, matrixStride);
             setBufferTypeId(var, type.InnerType());
+            if(dec.flags & Decorations::HasArrayStride)
+              setArrayStride(var, dec.arrayStride);
           }
         }
       }
