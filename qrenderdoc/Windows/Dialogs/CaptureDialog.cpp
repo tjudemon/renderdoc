@@ -196,7 +196,7 @@ CaptureDialog::CaptureDialog(ICaptureContext &ctx, OnCaptureMethod captureCallba
 
   // Set up warning for host layer config
   initWarning(ui->vulkanLayerWarn);
-  ui->vulkanLayerWarn->setVisible(RENDERDOC_NeedVulkanLayerRegistration(NULL));
+  ui->vulkanLayerWarn->setVisible(GC_NeedVulkanLayerRegistration(NULL));
   QObject::connect(ui->vulkanLayerWarn, &RDLabel::clicked, this,
                    &CaptureDialog::vulkanLayerWarn_mouseClick);
 
@@ -339,7 +339,7 @@ void CaptureDialog::vulkanLayerWarn_mouseClick()
 
   VulkanLayerRegistrationInfo info;
 
-  RENDERDOC_NeedVulkanLayerRegistration(&info);
+  GC_NeedVulkanLayerRegistration(&info);
 
   const bool hasOtherJSON = bool(info.flags & VulkanLayerFlags::OtherInstallsRegistered);
   const bool thisRegistered = bool(info.flags & VulkanLayerFlags::ThisInstallRegistered);
@@ -352,9 +352,9 @@ void CaptureDialog::vulkanLayerWarn_mouseClick()
   {
     QString msg =
         tr("There is an unfixable problem with your vulkan layer configuration.\n\n"
-           "This is most commonly caused by having a distribution-provided package of RenderDoc "
-           "installed, which cannot be modified by another build of RenderDoc.\n\n"
-           "Please consult the RenderDoc documentation, or package/distribution documentation on "
+           "This is most commonly caused by having a distribution-provided package of GfxCore "
+           "installed, which cannot be modified by another build of GfxCore.\n\n"
+           "Please consult the GfxCore documentation, or package/distribution documentation on "
            "linux. ");
 
     if(info.otherJSONs.size() > 1)
@@ -370,17 +370,17 @@ void CaptureDialog::vulkanLayerWarn_mouseClick()
   }
 
   QString msg =
-      tr("Vulkan capture happens through the API's layer mechanism. RenderDoc has detected that ");
+      tr("Vulkan capture happens through the API's layer mechanism. GfxCore has detected that ");
 
   if(hasOtherJSON)
   {
     if(info.otherJSONs.size() > 1)
       msg +=
-          tr("there are other conflicting RenderDoc builds registered already. They must be "
+          tr("there are other conflicting GfxCore builds registered already. They must be "
              "disabled so that vulkan programs can be captured without crashes.");
     else
       msg +=
-          tr("there is another conflicting RenderDoc build registered already. It must be disabled "
+          tr("there is another conflicting GfxCore build registered already. It must be disabled "
              "so that vulkan programs can be captured without crashes.");
 
     if(!thisRegistered)
@@ -424,7 +424,7 @@ void CaptureDialog::vulkanLayerWarn_mouseClick()
 
   if(needElevation)
     msg +=
-        tr("Due to some builds being in privileged locations, RenderDoc must elevate permissions "
+        tr("Due to some builds being in privileged locations, GfxCore must elevate permissions "
            "to update them.\n\n");
 
   msg += tr("This is a one-off change, it won't be needed again unless the installation moves.");
@@ -446,11 +446,11 @@ void CaptureDialog::vulkanLayerWarn_mouseClick()
 
       if(needElevation)
         msg +=
-            tr("\n\nNote that RenderDoc needs to elevate permissions to update the registration "
+            tr("\n\nNote that GfxCore needs to elevate permissions to update the registration "
                "regardless.");
       else
         msg +=
-            tr("\n\nNote that RenderDoc will need to elevate permissions to register at system "
+            tr("\n\nNote that GfxCore will need to elevate permissions to register at system "
                "level.");
 
       QMessageBox::StandardButton elevate =
@@ -467,7 +467,7 @@ void CaptureDialog::vulkanLayerWarn_mouseClick()
     if(run)
     {
       auto regComplete = [this, admin]() {
-        bool needReg = RENDERDOC_NeedVulkanLayerRegistration(NULL);
+        bool needReg = GC_NeedVulkanLayerRegistration(NULL);
         ui->vulkanLayerWarn->setVisible(needReg);
 
 #if !defined(Q_OS_LINUX) || defined(Q_OS_FREEBSD)
@@ -557,7 +557,7 @@ void CaptureDialog::vulkanLayerWarn_mouseClick()
       }
     }
 
-    ui->vulkanLayerWarn->setVisible(RENDERDOC_NeedVulkanLayerRegistration(NULL));
+    ui->vulkanLayerWarn->setVisible(GC_NeedVulkanLayerRegistration(NULL));
   }
 }
 
@@ -568,7 +568,7 @@ void CaptureDialog::CheckAndroidSetup(QString &filename)
 
   LambdaThread *scan = new LambdaThread([this, filename]() {
     rdcstr host = m_Ctx.Replay().CurrentRemote().Hostname();
-    RENDERDOC_CheckAndroidPackage(host, filename, &m_AndroidFlags);
+    GC_CheckAndroidPackage(host, filename, &m_AndroidFlags);
 
     const bool debuggable = bool(m_AndroidFlags & AndroidFlags::Debuggable);
     const bool hasroot = bool(m_AndroidFlags & AndroidFlags::RootAccess);
@@ -638,7 +638,7 @@ void CaptureDialog::on_processRefesh_clicked()
 
 bool CaptureDialog::checkAllowClose()
 {
-  if(RENDERDOC_IsGlobalHookActive())
+  if(GC_IsGlobalHookActive())
   {
     RDDialog::critical(this, tr("Global hook active"),
                        tr("Cannot close this window while global hook is active."));
@@ -776,7 +776,7 @@ void CaptureDialog::on_toggleGlobal_clicked()
     {
       QMessageBox::StandardButton res = RDDialog::question(
           this, tr("Restart as admin?"),
-          tr("RenderDoc needs to restart with administrator privileges. Restart?"),
+          tr("GfxCore needs to restart with administrator privileges. Restart?"),
           RDDialog::YesNoCancel);
 
       if(res == QMessageBox::Yes)
@@ -821,14 +821,14 @@ void CaptureDialog::on_toggleGlobal_clicked()
 
     ui->toggleGlobal->setText(tr("Disable Global Hook"));
 
-    if(RENDERDOC_IsGlobalHookActive())
-      RENDERDOC_StopGlobalHook();
+    if(GC_IsGlobalHookActive())
+      GC_StopGlobalHook();
 
     QString exe = ui->exePath->text();
 
     QString capturefile = m_Ctx.TempCaptureFilename(QFileInfo(exe).baseName());
 
-    ResultDetails success = RENDERDOC_StartGlobalHook(exe, capturefile, Settings().options);
+    ResultDetails success = GC_StartGlobalHook(exe, capturefile, Settings().options);
 
     if(!success.OK())
     {
@@ -850,8 +850,8 @@ void CaptureDialog::on_toggleGlobal_clicked()
   else
   {
     // not checked
-    if(RENDERDOC_IsGlobalHookActive())
-      RENDERDOC_StopGlobalHook();
+    if(GC_IsGlobalHookActive())
+      GC_StopGlobalHook();
 
     setEnabledMultiple(enableDisableWidgets, true);
 
@@ -1122,7 +1122,7 @@ CaptureSettings CaptureDialog::LoadSettingsFromDisk(const rdcstr &filename)
 void CaptureDialog::UpdateGlobalHook()
 {
   ui->globalGroup->setVisible(!IsInjectMode() && m_Ctx.Config().AllowGlobalHook &&
-                              RENDERDOC_CanGlobalHook());
+                              GC_CanGlobalHook());
 
   if(ui->exePath->text().length() >= 4)
   {
@@ -1130,7 +1130,7 @@ void CaptureDialog::UpdateGlobalHook()
     QString text = tr("Global hooking is risky!\nBe sure you know what you're doing.");
 
     if(ui->toggleGlobal->isChecked())
-      text += tr("\nEmergency restore @ %TEMP%\\RenderDoc_RestoreGlobalHook.reg");
+      text += tr("\nEmergency restore @ %TEMP%\\GfxCore_RestoreGlobalHook.reg");
 
     ui->globalLabel->setText(text);
   }

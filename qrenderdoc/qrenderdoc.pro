@@ -12,7 +12,7 @@ lessThan(QT_MAJOR_VERSION, 5): error("requires Qt 5.6; found $$[QT_VERSION]")
 
 equals(QT_MAJOR_VERSION, 5): lessThan(QT_MINOR_VERSION, 6): error("requires Qt 5.6; found $$[QT_VERSION]")
 
-TARGET = qrenderdoc
+TARGET = GfxCore
 TEMPLATE = app
 
 # include path for core renderdoc API
@@ -57,6 +57,8 @@ win32 {
 		Release:DESTDIR = $$_PRO_FILE_PWD_/../x64/Release
 	}
 
+	QMAKE_LFLAGS += /IMPLIB:$$DESTDIR/GfxCore_ui.lib
+
 	# Run SWIG here, since normally we run it from VS
 	swig.name = SWIG ${QMAKE_FILE_IN}
 	swig.input = SWIGSOURCES
@@ -99,7 +101,7 @@ win32 {
 	LIBS += user32.lib
 
 	# Link against the core library
-	LIBS += $$DESTDIR/renderdoc.lib
+	LIBS += $$DESTDIR/gfxcap.lib
 
 	# Link against the version library
 	LIBS += $$DESTDIR/version.lib

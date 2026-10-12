@@ -2901,7 +2901,7 @@ void Formatter::setPalette(QPalette palette)
   m_DarkChecker = palette.color(QPalette::Mid);
   m_LightChecker = m_DarkChecker.lighter(150);
 
-  RENDERDOC_SetColors(m_DarkChecker, m_LightChecker, IsDarkTheme());
+  GC_SetColors(m_DarkChecker, m_LightChecker, IsDarkTheme());
 }
 
 void Formatter::shutdown()

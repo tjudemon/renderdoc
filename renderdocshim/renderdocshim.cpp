@@ -26,7 +26,7 @@
 // so that when inserted into an application it has as small an overhead/impact
 // as possible. Ideally it would be present only to be a pass-through hook and
 // the first time only to allocate a little, check if this process should be hooked
-// and load the renderdoc dll.
+// and load the gfxcap dll.
 //
 // The no-CRT restriction causes some awkward bits and pieces but the dll is simple
 // enough that it's not a big issue.
@@ -61,7 +61,7 @@ void CheckHook()
 
   if(datahandle == NULL)
   {
-    LOGPRINT(L"renderdocshim: can't open global data\n");
+    LOGPRINT(L"gfxcapshim: can't open global data\n");
     return;
   }
 
@@ -70,14 +70,14 @@ void CheckHook()
   if(data == NULL)
   {
     CloseHandle(datahandle);
-    LOGPRINT(L"renderdocshim: can't map global data\n");
+    LOGPRINT(L"gfxcapshim: can't map global data\n");
     return;
   }
 
   if(data->pathmatchstring[0] == 0 || data->pathmatchstring[1] == 0 ||
      data->pathmatchstring[2] == 0 || data->pathmatchstring[3] == 0)
   {
-    LOGPRINT(L"renderdocshim: invalid pathmatchstring: '");
+    LOGPRINT(L"gfxcapshim: invalid pathmatchstring: '");
     LOGPRINT(data->pathmatchstring);
     LOGPRINT(L"'\n");
 
@@ -104,7 +104,7 @@ void CheckHook()
 
     if(find >= 0)
     {
-      LOGPRINT(L"renderdocshim: Hooking into '");
+      LOGPRINT(L"gfxcapshim: Hooking into '");
       LOGPRINT(exepath);
       LOGPRINT(L"', based on '");
       LOGPRINT(data->pathmatchstring);
@@ -115,11 +115,11 @@ void CheckHook()
       if(mod)
       {
         pINTERNAL_SetCaptureOptions setopts =
-            (pINTERNAL_SetCaptureOptions)GetProcAddress(mod, "INTERNAL_SetCaptureOptions");
+            (pINTERNAL_SetCaptureOptions)GetProcAddress(mod, "GfxCap_SetCaptureOptions");
         pINTERNAL_SetLogFile setlogfile =
-            (pINTERNAL_SetLogFile)GetProcAddress(mod, "INTERNAL_SetLogFile");
+            (pINTERNAL_SetLogFile)GetProcAddress(mod, "GfxCap_SetLogFile");
         pINTERNAL_SetDebugLogFile setdebuglog =
-            (pINTERNAL_SetDebugLogFile)GetProcAddress(mod, "INTERNAL_SetDebugLogFile");
+            (pINTERNAL_SetDebugLogFile)GetProcAddress(mod, "GfxCap_SetDebugLogFile");
 
         if(setopts)
           setopts((const CaptureOptions *)data->opts);
@@ -133,7 +133,7 @@ void CheckHook()
     }
     else
     {
-      LOGPRINT(L"renderdocshim: NOT Hooking into '");
+      LOGPRINT(L"gfxcapshim: NOT Hooking into '");
       LOGPRINT(exepath);
       LOGPRINT(L"', based on '");
       LOGPRINT(data->pathmatchstring);
@@ -144,7 +144,7 @@ void CheckHook()
   }
   else
   {
-    LOGPRINT(L"renderdocshim: Failed to allocate exepath\n");
+    LOGPRINT(L"gfxcapshim: Failed to allocate exepath\n");
   }
 
   UnmapViewOfFile(data);

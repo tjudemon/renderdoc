@@ -53,6 +53,8 @@ public:
 #endif
   }
 
+  const char *GetName() const override { return "gl"; }
+
   void RegisterHooks();
 
   void UseUnusedSupportedFunction(const char *name);

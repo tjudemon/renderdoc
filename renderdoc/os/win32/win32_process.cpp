@@ -192,50 +192,50 @@ uint64_t Process::GetMemoryUsage()
 }
 
 // helpers for various shims and dlls etc, not part of the public API
-extern "C" __declspec(dllexport) void __cdecl INTERNAL_GetTargetControlIdent(uint32_t *ident)
+extern "C" __declspec(dllexport) void __cdecl GfxCap_GetTargetControlIdent(uint32_t *ident)
 {
   if(ident)
     *ident = RenderDoc::Inst().GetTargetControlIdent();
 }
 
-extern "C" __declspec(dllexport) void __cdecl INTERNAL_SetCaptureOptions(CaptureOptions *opts)
+extern "C" __declspec(dllexport) void __cdecl GfxCap_SetCaptureOptions(CaptureOptions *opts)
 {
   if(opts)
     RenderDoc::Inst().SetCaptureOptions(*opts);
 }
 
-extern "C" __declspec(dllexport) void __cdecl INTERNAL_SetCaptureFile(const char *capfile)
+extern "C" __declspec(dllexport) void __cdecl GfxCap_SetCaptureFile(const char *capfile)
 {
   if(capfile)
     RenderDoc::Inst().SetCaptureFileTemplate(capfile);
 }
 
-extern "C" __declspec(dllexport) void __cdecl INTERNAL_SetDebugLogFile(const char *logfile)
+extern "C" __declspec(dllexport) void __cdecl GfxCap_SetDebugLogFile(const char *logfile)
 {
-  RENDERDOC_SetDebugLogFile(logfile ? logfile : rdcstr());
+  GC_SetDebugLogFile(logfile ? logfile : rdcstr());
 }
 
 static EnvironmentModification tempEnvMod;
 
-extern "C" __declspec(dllexport) void __cdecl INTERNAL_EnvModName(const char *name)
+extern "C" __declspec(dllexport) void __cdecl GfxCap_EnvModName(const char *name)
 {
   if(name)
     tempEnvMod.name = name;
 }
 
-extern "C" __declspec(dllexport) void __cdecl INTERNAL_EnvModValue(const char *value)
+extern "C" __declspec(dllexport) void __cdecl GfxCap_EnvModValue(const char *value)
 {
   if(value)
     tempEnvMod.value = value;
 }
 
-extern "C" __declspec(dllexport) void __cdecl INTERNAL_EnvSep(EnvSep *sep)
+extern "C" __declspec(dllexport) void __cdecl GfxCap_EnvSep(EnvSep *sep)
 {
   if(sep)
     tempEnvMod.sep = *sep;
 }
 
-extern "C" __declspec(dllexport) void __cdecl INTERNAL_EnvMod(EnvMod *mod)
+extern "C" __declspec(dllexport) void __cdecl GfxCap_EnvMod(EnvMod *mod)
 {
   if(mod)
   {
@@ -244,7 +244,7 @@ extern "C" __declspec(dllexport) void __cdecl INTERNAL_EnvMod(EnvMod *mod)
   }
 }
 
-extern "C" __declspec(dllexport) void __cdecl INTERNAL_ApplyEnvMods(void *ignored)
+extern "C" __declspec(dllexport) void __cdecl GfxCap_ApplyEnvMods(void *ignored)
 {
   Process::ApplyEnvironmentModification();
 }
@@ -609,6 +609,23 @@ rdcpair<RDResult, uint32_t> Process::InjectIntoProcess(uint32_t pid,
 
   RDCLOG("Injecting renderdoc into process %lu", pid);
 
+  // Experimental diagnostic: GFXCAP_NO_INJECT=1 launches the process without any injection at
+  // all (no module, no remote thread). This isolates whether the anti-cheat reacts to the
+  // injection itself (module + CreateRemoteThread) or to the launch path alone.
+  wchar_t noInjectBuf[8] = {};
+  bool noInject = false;
+  if(GetEnvironmentVariableW(L"GFXCAP_NO_INJECT", noInjectBuf, 8) > 0)
+    noInject = (noInjectBuf[0] == L'1');
+
+  if(noInject)
+  {
+    RDCLOG("GFXCAP_NO_INJECT set - launching process %lu without injection", pid);
+    RDResult result;
+    SET_ERROR_RESULT(result, ResultCode::Succeeded, "Injection skipped (GFXCAP_NO_INJECT)");
+    CloseHandle(hProcess);
+    return {result, 0};
+  }
+
   wchar_t renderdocPath[MAX_PATH] = {0};
   GetModuleFileNameW(GetModuleHandleA(STRINGIZE(RDOC_BASE_NAME) ".dll"), &renderdocPath[0],
                                       MAX_PATH - 1);
@@ -669,9 +686,9 @@ rdcpair<RDResult, uint32_t> Process::InjectIntoProcess(uint32_t pid,
   // We don't support capturing 64-bit programs from a 32-bit install
   // because it's pointless - a 64-bit install will work for all in
   // that case. But we do want to handle the case of:
-  // 64-bit renderdoc -> 32-bit program (via 32-bit renderdoccmd)
-  //    -> 64-bit program (going back to 64-bit renderdoccmd).
-  // so we try to see if we're an x86 invoked renderdoccmd in an
+  // 64-bit renderdoc -> 32-bit program (via 32-bit gfxcapcmd)
+  //    -> 64-bit program (going back to 64-bit gfxcapcmd).
+  // so we try to see if we're an x86 invoked gfxcapcmd in an
   // otherwise 64-bit install, and 'promote' back to 64-bit.
   if(selfWow64 && !isWow64)
   {
@@ -717,7 +734,7 @@ rdcpair<RDResult, uint32_t> Process::InjectIntoProcess(uint32_t pid,
     }
   }
 #else
-  // farm off to alternate bitness renderdoccmd.exe
+  // farm off to alternate bitness gfxcapcmd.exe
 
   // if the target process is 'wow64' that means it's 32-bit.
   capalt = (isWow64 == TRUE);
@@ -735,7 +752,7 @@ rdcpair<RDResult, uint32_t> Process::InjectIntoProcess(uint32_t pid,
 
       renderdocPath[idx] = 0;
 
-      wcscat_s(renderdocPath, L"\\Win32\\Development\\renderdoccmd.exe");
+      wcscat_s(renderdocPath, L"\\Win32\\Development\\gfxcapcmd.exe");
     }
 
     if(!devLocation)
@@ -748,7 +765,7 @@ rdcpair<RDResult, uint32_t> Process::InjectIntoProcess(uint32_t pid,
 
         renderdocPath[idx] = 0;
 
-        wcscat_s(renderdocPath, L"\\Win32\\Release\\renderdoccmd.exe");
+        wcscat_s(renderdocPath, L"\\Win32\\Release\\gfxcapcmd.exe");
       }
     }
 
@@ -763,7 +780,7 @@ rdcpair<RDResult, uint32_t> Process::InjectIntoProcess(uint32_t pid,
         *slash = 0;
 
       // append path
-      wcscat_s(renderdocPath, L"\\x86\\renderdoccmd.exe");
+      wcscat_s(renderdocPath, L"\\x86\\gfxcapcmd.exe");
     }
 #else
     // if it looks like we're in the development environment, look for the alternate bitness in the
@@ -775,7 +792,7 @@ rdcpair<RDResult, uint32_t> Process::InjectIntoProcess(uint32_t pid,
 
       renderdocPath[idx] = 0;
 
-      wcscat_s(renderdocPath, L"\\x64\\Development\\renderdoccmd.exe");
+      wcscat_s(renderdocPath, L"\\x64\\Development\\gfxcapcmd.exe");
     }
 
     if(!devLocation)
@@ -788,13 +805,13 @@ rdcpair<RDResult, uint32_t> Process::InjectIntoProcess(uint32_t pid,
 
         renderdocPath[idx] = 0;
 
-        wcscat_s(renderdocPath, L"\\x64\\Release\\renderdoccmd.exe");
+        wcscat_s(renderdocPath, L"\\x64\\Release\\gfxcapcmd.exe");
       }
     }
 
     if(!devLocation)
     {
-      // look upwards on 32-bit to find the parent renderdoccmd.
+      // look upwards on 32-bit to find the parent gfxcapcmd.
       wchar_t *slash = wcsrchr(renderdocPath, L'\\');
 
       // remove the filename
@@ -808,7 +825,7 @@ rdcpair<RDResult, uint32_t> Process::InjectIntoProcess(uint32_t pid,
         *slash = 0;
 
       // append path
-      wcscat_s(renderdocPath, L"\\renderdoccmd.exe");
+      wcscat_s(renderdocPath, L"\\gfxcapcmd.exe");
     }
 #endif
 
@@ -926,11 +943,11 @@ rdcpair<RDResult, uint32_t> Process::InjectIntoProcess(uint32_t pid,
       RDResult result;
 #if RENDERDOC_OFFICIAL_BUILD
       SET_ERROR_RESULT(result, ResultCode::InternalError,
-                       "Can't run 32-bit renderdoccmd to capture 32-bit program.");
+                       "Can't run 32-bit gfxcapcmd to capture 32-bit program.");
 #else
       SET_ERROR_RESULT(
           result, ResultCode::InternalError,
-          "Can't run 32-bit renderdoccmd to capture 32-bit program."
+          "Can't run 32-bit gfxcapcmd to capture 32-bit program."
           "If this is a locally built RenderDoc you must build both 32-bit and 64-bit versions.");
 #endif
       CloseHandle(hProcess);
@@ -963,14 +980,33 @@ rdcpair<RDResult, uint32_t> Process::InjectIntoProcess(uint32_t pid,
       ResultCode code = (ResultCode)exitCode;
 
       RDResult result;
-      SET_ERROR_RESULT(result, code, "32-bit renderdoccmd returned '%s'", ToStr(code).c_str());
+      SET_ERROR_RESULT(result, code, "32-bit gfxcapcmd returned '%s'", ToStr(code).c_str());
       return {code, 0};
     }
 
     return {ResultCode::Succeeded, (uint32_t)exitCode};
   }
 
-  InjectDLL(hProcess, renderdocPath);
+  // Experimental diagnostic: GFXCAP_NO_MODULE=1 still performs the injection primitive
+  // (VirtualAllocEx + WriteProcessMemory + CreateRemoteThread + LoadLibraryW) but targets a benign,
+  // already-loaded system DLL instead of gfxcap.dll. This isolates whether the anti-cheat reacts to
+  // the injection primitive itself, or to the injected module.
+  wchar_t noModCrtBuf[8] = {};
+  bool noModuleCrt = false;
+  if(GetEnvironmentVariableW(L"GFXCAP_NO_MODULE", noModCrtBuf, 8) > 0)
+    noModuleCrt = (noModCrtBuf[0] == L'1');
+
+  if(noModuleCrt)
+  {
+    RDCLOG("GFXCAP_NO_MODULE set - CreateRemoteThread loading kernel32.dll instead of %s.dll "
+           "(primitive-only test, no module, no hooks)",
+           STRINGIZE(RDOC_BASE_NAME));
+    InjectDLL(hProcess, L"kernel32.dll");
+  }
+  else
+  {
+    InjectDLL(hProcess, renderdocPath);
+  }
 
   const char *rdoc_dll = STRINGIZE(RDOC_BASE_NAME);
 
@@ -1000,18 +1036,18 @@ rdcpair<RDResult, uint32_t> Process::InjectIntoProcess(uint32_t pid,
     // safe to cast away the const as we know these functions don't modify the parameters
 
     if(!capturefile.empty())
-      InjectFunctionCall(hProcess, loc, "INTERNAL_SetCaptureFile", (void *)capturefile.c_str(),
+      InjectFunctionCall(hProcess, loc, "GfxCap_SetCaptureFile", (void *)capturefile.c_str(),
                          capturefile.size() + 1);
 
     rdcstr debugLogfile = RDCGETLOGFILE();
 
-    InjectFunctionCall(hProcess, loc, "INTERNAL_SetDebugLogFile", (void *)debugLogfile.c_str(),
+    InjectFunctionCall(hProcess, loc, "GfxCap_SetDebugLogFile", (void *)debugLogfile.c_str(),
                        debugLogfile.size() + 1);
 
-    InjectFunctionCall(hProcess, loc, "INTERNAL_SetCaptureOptions", (CaptureOptions *)&opts,
+    InjectFunctionCall(hProcess, loc, "GfxCap_SetCaptureOptions", (CaptureOptions *)&opts,
                        sizeof(CaptureOptions));
 
-    InjectFunctionCall(hProcess, loc, "INTERNAL_GetTargetControlIdent", &result.second,
+    InjectFunctionCall(hProcess, loc, "GfxCap_GetTargetControlIdent", &result.second,
                        sizeof(result.second));
 
     if(!env.empty())
@@ -1026,17 +1062,17 @@ rdcpair<RDResult, uint32_t> Process::InjectIntoProcess(uint32_t pid,
         if(name == "")
           break;
 
-        InjectFunctionCall(hProcess, loc, "INTERNAL_EnvModName", (void *)name.c_str(),
+        InjectFunctionCall(hProcess, loc, "GfxCap_EnvModName", (void *)name.c_str(),
                            name.size() + 1);
-        InjectFunctionCall(hProcess, loc, "INTERNAL_EnvModValue", (void *)value.c_str(),
+        InjectFunctionCall(hProcess, loc, "GfxCap_EnvModValue", (void *)value.c_str(),
                            value.size() + 1);
-        InjectFunctionCall(hProcess, loc, "INTERNAL_EnvSep", &sep, sizeof(sep));
-        InjectFunctionCall(hProcess, loc, "INTERNAL_EnvMod", &mod, sizeof(mod));
+        InjectFunctionCall(hProcess, loc, "GfxCap_EnvSep", &sep, sizeof(sep));
+        InjectFunctionCall(hProcess, loc, "GfxCap_EnvMod", &mod, sizeof(mod));
       }
 
       // parameter is unused
       void *dummy = NULL;
-      InjectFunctionCall(hProcess, loc, "INTERNAL_ApplyEnvMods", &dummy, sizeof(dummy));
+      InjectFunctionCall(hProcess, loc, "GfxCap_ApplyEnvMods", &dummy, sizeof(dummy));
     }
   }
 
@@ -1140,7 +1176,7 @@ rdcpair<RDResult, uint32_t> Process::LaunchAndInjectIntoProcess(
     const CaptureOptions &opts, bool waitForExit)
 {
   void *func =
-      GetProcAddress(GetModuleHandleA(STRINGIZE(RDOC_BASE_NAME) ".dll"), "INTERNAL_SetCaptureFile");
+      GetProcAddress(GetModuleHandleA(STRINGIZE(RDOC_BASE_NAME) ".dll"), "GfxCap_SetCaptureFile");
 
   if(func == NULL)
   {
@@ -1256,7 +1292,7 @@ RDResult BackupAndChangeRegistry(GlobalHookData &hookdata, const rdcstr &shimpat
   {
     RETURN_ERROR_RESULT(
         ResultCode::FileIOFailed,
-        "RenderDoc is installed on a volume or system that has short paths disabled.\n"
+        "GfxCore is installed on a volume or system that has short paths disabled.\n"
         "For the global hook, short paths must be enabled where RenderDoc is installed.");
   }
 
@@ -1269,7 +1305,7 @@ RDResult BackupAndChangeRegistry(GlobalHookData &hookdata, const rdcstr &shimpat
     {
       RETURN_ERROR_RESULT(
           ResultCode::FileIOFailed,
-          "RenderDoc is installed on a volume or system that has short paths disabled.\n"
+          "GfxCore is installed on a volume or system that has short paths disabled.\n"
           "For the global hook, short paths must be enabled where RenderDoc is installed.");
     }
   }
@@ -1388,7 +1424,7 @@ RDResult BackupAndChangeRegistry(GlobalHookData &hookdata, const rdcstr &shimpat
   // write it to disk but don't fail if we can't, just print it to the log and keep going.
   wchar_t reg_backup[MAX_PATH];
   GetTempPathW(MAX_PATH, reg_backup);
-  wcscat_s(reg_backup, L"RenderDoc_RestoreGlobalHook.reg");
+  wcscat_s(reg_backup, L"GfxCore_RestoreGlobalHook.reg");
 
   FILE *f = NULL;
   _wfopen_s(&f, reg_backup, L"w");
@@ -1506,8 +1542,8 @@ RDResult Process::StartGlobalHook(const rdcstr &pathmatch, const rdcstr &capture
 
   renderdocPath = get_dirname(renderdocPath);
 
-  // the native renderdoccmd.exe is always next to the dll. Wow32 will be somewhere else
-  rdcstr cmdpathNative = renderdocPath + "\\renderdoccmd.exe";
+  // the native gfxcapcmd.exe is always next to the dll. Wow32 will be somewhere else
+  rdcstr cmdpathNative = renderdocPath + "\\gfxcapcmd.exe";
   rdcstr cmdpathWow32;
 
   rdcstr shimpathNative = renderdocPath;
@@ -1515,8 +1551,8 @@ RDResult Process::StartGlobalHook(const rdcstr &pathmatch, const rdcstr &capture
 
 #if ENABLED(RDOC_X64)
 
-  // native shim is just renderdocshim64.dll
-  shimpathNative = renderdocPath + "\\renderdocshim64.dll";
+  // native shim is just gfxcapshim64.dll
+  shimpathNative = renderdocPath + "\\gfxcapshim64.dll";
 
   // if it looks like we're in the development environment, look for the alternate bitness in the
   // corresponding folder
@@ -1525,8 +1561,8 @@ RDResult Process::StartGlobalHook(const rdcstr &pathmatch, const rdcstr &capture
   {
     renderdocPath.erase(devLocation, ~0U);
 
-    shimpathWow32 = renderdocPath + "\\Win32\\Development\\renderdocshim32.dll";
-    cmdpathWow32 = renderdocPath + "\\Win32\\Development\\renderdoccmd.exe";
+    shimpathWow32 = renderdocPath + "\\Win32\\Development\\gfxcapshim32.dll";
+    cmdpathWow32 = renderdocPath + "\\Win32\\Development\\gfxcapcmd.exe";
   }
   else
   {
@@ -1536,22 +1572,22 @@ RDResult Process::StartGlobalHook(const rdcstr &pathmatch, const rdcstr &capture
     {
       renderdocPath.erase(devLocation, ~0U);
 
-      shimpathWow32 = renderdocPath + "\\Win32\\Release\\renderdocshim32.dll";
-      cmdpathWow32 = renderdocPath + "\\Win32\\Release\\renderdoccmd.exe";
+      shimpathWow32 = renderdocPath + "\\Win32\\Release\\gfxcapshim32.dll";
+      cmdpathWow32 = renderdocPath + "\\Win32\\Release\\gfxcapcmd.exe";
     }
   }
 
   // if we're not in the dev environment, assume it's under a x86\ subfolder
   if(devLocation < 0)
   {
-    shimpathWow32 = renderdocPath + "\\x86\\renderdocshim32.dll";
-    cmdpathWow32 = renderdocPath + "\\x86\\renderdoccmd.exe";
+    shimpathWow32 = renderdocPath + "\\x86\\gfxcapshim32.dll";
+    cmdpathWow32 = renderdocPath + "\\x86\\gfxcapcmd.exe";
   }
 
 #else
 
   // nothing fancy to do here for 32-bit, just point the shim next to our dll.
-  shimpathNative = renderdocPath + "\\renderdocshim32.dll";
+  shimpathNative = renderdocPath + "\\gfxcapshim32.dll";
 
 #endif
 
@@ -1639,7 +1675,7 @@ RDResult Process::StartGlobalHook(const rdcstr &pathmatch, const rdcstr &capture
   {
     CloseHandle(hookdata.dataNative.pipe);
     RestoreRegistry(hookdata);
-    RETURN_ERROR_RESULT(ResultCode::InternalError, "Can't launch renderdoccmd from '%s' (err %u)",
+    RETURN_ERROR_RESULT(ResultCode::InternalError, "Can't launch gfxcapcmd from '%s' (err %u)",
                         cmdpathNative.c_str(), err);
   }
 
@@ -1648,7 +1684,7 @@ RDResult Process::StartGlobalHook(const rdcstr &pathmatch, const rdcstr &capture
 
   RDCEraseEl(pi);
 
-// repeat the process for the Wow32 renderdoccmd
+// repeat the process for the Wow32 gfxcapcmd
 #if ENABLED(RDOC_X64)
   params = StringFormat::Fmt(
       "\"%s\" globalhook --match \"%s\" --capfile \"%s\" --debuglog \"%s\" --capopts \"%s\"",
@@ -1700,7 +1736,7 @@ RDResult Process::StartGlobalHook(const rdcstr &pathmatch, const rdcstr &capture
     CloseHandle(hookdata.dataNative.pipe);
     CloseHandle(hookdata.dataWow32.pipe);
     RestoreRegistry(hookdata);
-    RETURN_ERROR_RESULT(ResultCode::InternalError, "Can't launch renderdoccmd from '%s' (err %u)",
+    RETURN_ERROR_RESULT(ResultCode::InternalError, "Can't launch gfxcapcmd from '%s' (err %u)",
                         cmdpathWow32.c_str(), err);
   }
 

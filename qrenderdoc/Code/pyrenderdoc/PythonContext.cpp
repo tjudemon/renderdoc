@@ -284,7 +284,7 @@ struct StubsVersion
     if(RENDERDOC_STABLE_BUILD)
       ret.commit = lit("stable");
     else
-      ret.commit = QString::fromUtf8(RENDERDOC_GetCommitHash());
+      ret.commit = QString::fromUtf8(GC_GetCommitHash());
     return ret;
   }
 
@@ -2317,7 +2317,7 @@ PyObject *PythonContext::outstream_write(PyObject *self, PyObject *args)
       }
 
       if(!message.empty())
-        RENDERDOC_LogMessage(redirector->isStdError ? LogType::Warning : LogType::Comment, "EXTN",
+        GC_LogMessage(redirector->isStdError ? LogType::Warning : LogType::Comment, "EXTN",
                              filename, line, message);
     }
   }
@@ -2734,7 +2734,7 @@ extern "C" void HandleException(PyObject *global_handle)
       filename = redirector->extension;
     }
 
-    RENDERDOC_LogMessage(LogType::Error, "EXTN", filename, linenum, exString);
+    GC_LogMessage(LogType::Error, "EXTN", filename, linenum, exString);
   }
 }
 
