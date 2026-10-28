@@ -24,6 +24,8 @@
 
 #include "LiveCapture.h"
 #include <QDesktopServices>
+#include <QElapsedTimer>
+#include <QHash>
 #include <QHostInfo>
 #include <QMenu>
 #include <QMetaProperty>
@@ -31,6 +33,7 @@
 #include <QPainter>
 #include <QProcess>
 #include <QScrollBar>
+#include <QSet>
 #include <QStyledItemDelegate>
 #include <QToolBar>
 #include <QToolButton>
@@ -41,6 +44,422 @@
 #include "Windows/MainWindow.h"
 #include "toolwindowmanager/ToolWindowManager.h"
 #include "ui_LiveCapture.h"
+
+#if defined(Q_OS_WIN32)
+// These SDK headers require windows.h to have been included first.
+// clang-format off
+#include <windows.h>
+#include <tlhelp32.h>
+#include <wbemidl.h>
+// clang-format on
+
+#pragma comment(lib, "ole32.lib")
+#pragma comment(lib, "oleaut32.lib")
+#pragma comment(lib, "wbemuuid.lib")
+
+// Child injection happens before application entry. An Electron NodeService may
+// fail to load the library at that point but accept ordinary attachment after
+// initialisation. This monitor is scoped to the launcher and capture options
+// chosen in the GUI; it never attaches to an unrelated rendering application.
+class ElectronLauncherMonitor
+{
+public:
+  ElectronLauncherMonitor(uint32_t rootPID, const QString &path, const QString &capturefile,
+                          const CaptureOptions &options)
+      : m_RootPID(rootPID),
+        m_Path(QFileInfo(path).absoluteFilePath()),
+        m_CaptureFile(capturefile),
+        m_Options(options)
+  {
+    m_Clock.start();
+    if(!options.hookIntoChildren || path.isEmpty() ||
+       !QFileInfo(QFileInfo(path).absolutePath() + lit("/LICENSE.electron.txt")).exists())
+      return;
+
+    HRESULT hr = CoInitializeEx(NULL, COINIT_MULTITHREADED);
+    m_Uninitialise = SUCCEEDED(hr);
+    if(FAILED(hr) && hr != RPC_E_CHANGED_MODE)
+      return;
+
+    IWbemLocator *locator = NULL;
+    hr = CoCreateInstance(CLSID_WbemLocator, NULL, CLSCTX_INPROC_SERVER, IID_IWbemLocator,
+                          (void **)&locator);
+    if(FAILED(hr))
+      return;
+    BSTR ns = SysAllocString(L"ROOT\\CIMV2");
+    hr = locator->ConnectServer(ns, NULL, NULL, NULL, 0, NULL, NULL, &m_Services);
+    SysFreeString(ns);
+    locator->Release();
+    if(SUCCEEDED(hr))
+      hr = CoSetProxyBlanket(m_Services, RPC_C_AUTHN_WINNT, RPC_C_AUTHZ_NONE, NULL,
+                             RPC_C_AUTHN_LEVEL_CALL, RPC_C_IMP_LEVEL_IMPERSONATE, NULL, EOAC_NONE);
+    if(FAILED(hr))
+    {
+      if(m_Services)
+        m_Services->Release();
+      m_Services = NULL;
+      qWarning() << "Electron launcher helper discovery unavailable:" << uint32_t(hr);
+      SetStatus("Launcher helper discovery unavailable");
+    }
+    m_Timer.start();
+    if(m_Services)
+    {
+      qInfo() << "Monitoring Electron launcher helper for PID" << m_RootPID;
+      SetStatus("Waiting for launcher helper");
+    }
+  }
+
+  ~ElectronLauncherMonitor()
+  {
+    if(m_Command.state() != QProcess::NotRunning)
+    {
+      m_Command.kill();
+      m_Command.waitForFinished(1000);
+    }
+    if(m_HelperProcess)
+      CloseHandle(m_HelperProcess);
+    if(m_Services)
+      m_Services->Release();
+    if(m_Uninitialise)
+      CoUninitialize();
+  }
+
+  const QString &StatusText() const { return m_Status; }
+
+  bool CanRetryAfterApplication() const
+  {
+    return m_WaitingForApplication.contains(m_HelperIdentity);
+  }
+
+  void RetryAfterApplicationStart()
+  {
+    // Only the button permits one additional round. Application startup and
+    // elapsed time never trigger attachment. Helper checks still apply.
+    if(CanRetryAfterApplication())
+      m_RequestedRetry = m_HelperIdentity;
+  }
+
+  // Called only by the connection worker. A successful result is added to the
+  // normal child list so the helper and its new children can be opened in the UI.
+  uint32_t Poll(uint32_t &helperPID)
+  {
+    if(!m_Services || (m_Timer.isValid() && m_Timer.elapsed() < 1000))
+      return 0;
+    m_Timer.restart();
+
+    if(m_HelperProcess)
+      return FinishAttachment(helperPID);
+
+    QString query = lit("SELECT ProcessId,ExecutablePath,CommandLine FROM Win32_Process "
+                        "WHERE ParentProcessId = %1")
+                        .arg(m_RootPID);
+    BSTR language = SysAllocString(L"WQL");
+    BSTR statement = SysAllocString((const wchar_t *)query.utf16());
+    IEnumWbemClassObject *enumerator = NULL;
+    HRESULT hr = m_Services->ExecQuery(language, statement,
+                                       WBEM_FLAG_FORWARD_ONLY | WBEM_FLAG_RETURN_IMMEDIATELY, NULL,
+                                       &enumerator);
+    SysFreeString(language);
+    SysFreeString(statement);
+    if(FAILED(hr) || !enumerator)
+      return 0;
+
+    QVector<uint32_t> candidates;
+    while(true)
+    {
+      IWbemClassObject *process = NULL;
+      ULONG count = 0;
+      hr = enumerator->Next(1000, 1, &process, &count);
+      if(FAILED(hr) || count == 0)
+        break;
+      QString path = QFileInfo(StringProperty(process, L"ExecutablePath")).absoluteFilePath();
+      QString cmd = StringProperty(process, L"CommandLine");
+      // Do not log command lines: launchers may pass authentication tokens.
+      if(path.compare(m_Path, Qt::CaseInsensitive) == 0 &&
+         QRegularExpression(lit("(?:^|\\s)\"?--type(?:=|\\s+)\"?utility\"?(?=\\s|$)"))
+             .match(cmd)
+             .hasMatch() &&
+         QRegularExpression(lit("(?:^|\\s)\"?--utility-sub-type(?:=|\\s+)\"?"
+                                "node\\.mojom\\.NodeService\"?(?=\\s|$)"))
+             .match(cmd)
+             .hasMatch())
+      {
+        VARIANT value;
+        VariantInit(&value);
+        if(SUCCEEDED(process->Get(L"ProcessId", 0, &value, NULL, NULL)))
+        {
+          if(value.vt == VT_I4)
+            candidates.push_back(uint32_t(value.lVal));
+          else if(value.vt == VT_UI4)
+            candidates.push_back(uint32_t(value.ulVal));
+        }
+        VariantClear(&value);
+      }
+      process->Release();
+    }
+    enumerator->Release();
+    if(hr != WBEM_S_FALSE)
+      return 0;
+    // Never guess when multiple utility services match.
+    if(candidates.size() != 1)
+      return 0;
+
+    uint32_t pid = candidates[0];
+    HANDLE process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
+    if(!process)
+      return 0;
+    wchar_t executable[32768] = {};
+    DWORD executableLength = DWORD(ARRAY_COUNT(executable));
+    if(!QueryFullProcessImageNameW(process, 0, executable, &executableLength) ||
+       QFileInfo(QString::fromWCharArray(executable, int(executableLength)))
+               .absoluteFilePath()
+               .compare(m_Path, Qt::CaseInsensitive) != 0)
+    {
+      CloseHandle(process);
+      return 0;
+    }
+    FILETIME created = {}, exited = {}, kernel = {}, user = {}, now = {};
+    bool timed = GetProcessTimes(process, &created, &exited, &kernel, &user) != FALSE;
+    GetSystemTimeAsFileTime(&now);
+    uint64_t birth = (uint64_t(created.dwHighDateTime) << 32) | created.dwLowDateTime;
+    uint64_t current = (uint64_t(now.dwHighDateTime) << 32) | now.dwLowDateTime;
+    QString identity = QFormatStr("%1:%2").arg(pid).arg(qulonglong(birth));
+    // Give the initial child hook time to finish. Failed ordinary attachments
+    // get at most three attempts, spaced out while the launcher initialises.
+    Attempt &attempt = m_Attempts[identity];
+    if(!timed || current < birth || current - birth < 100000000 || m_Clock.elapsed() < attempt.nextTry)
+    {
+      CloseHandle(process);
+      return 0;
+    }
+    int moduleState = ModuleState(pid);
+    if(m_Attempted.contains(identity))
+    {
+      if(!m_WaitingForApplication.contains(identity) || moduleState != 0 ||
+         m_RequestedRetry != identity)
+      {
+        if(m_WaitingForApplication.contains(identity) && moduleState == 1)
+        {
+          m_WaitingForApplication.remove(identity);
+          SetStatus("Launcher helper library already loaded");
+        }
+        CloseHandle(process);
+        return 0;
+      }
+      // The button permits one additional bounded round. Waiting alone never
+      // resets attempts, and a successful helper is never attached again.
+      m_WaitingForApplication.remove(identity);
+      m_PostLaunchRetried.insert(identity);
+      m_Attempted.remove(identity);
+      m_RequestedRetry.clear();
+      attempt.count = 0;
+      attempt.nextTry = 0;
+      qInfo() << "User requested Electron launcher helper retry:" << pid;
+    }
+    if(moduleState != 0)
+    {
+      CloseHandle(process);
+      if(moduleState == 1)
+        SetStatus("Launcher helper library already loaded");
+      return 0;
+    }
+    DWORD exitCode = 0;
+    if(!GetExitCodeProcess(process, &exitCode) || exitCode != STILL_ACTIVE)
+    {
+      CloseHandle(process);
+      return 0;
+    }
+    QString tool = QCoreApplication::applicationDirPath() + lit("/gfxcapcmd.exe");
+    if(!QFileInfo(tool).isFile())
+    {
+      CloseHandle(process);
+      m_Attempted.insert(identity);
+      SetStatus("Launcher helper attachment failed");
+      qWarning() << "Electron launcher helper attachment unavailable: missing" << tool;
+      return 0;
+    }
+
+    ++attempt.count;
+    m_HelperProcess = process;
+    m_HelperPID = pid;
+    m_HelperIdentity = identity;
+    m_AttachmentTimer.start();
+    m_Command.setProcessChannelMode(QProcess::MergedChannels);
+    m_Command.setWorkingDirectory(QFileInfo(m_Path).absolutePath());
+    m_Command.setCreateProcessArgumentsModifier(
+        [](QProcess::CreateProcessArguments *args) { args->flags |= CREATE_NO_WINDOW; });
+    m_Command.start(tool, CaptureArguments(pid));
+    SetStatus("Attaching launcher helper");
+    qInfo() << "Attaching Electron launcher helper via gfxcapcmd:" << pid << "attempt"
+            << attempt.count;
+    m_Command.waitForStarted(1000);
+    return 0;
+  }
+
+private:
+  void SetStatus(const char *text) { m_Status = QCoreApplication::translate("LiveCapture", text); }
+
+  QStringList CaptureArguments(uint32_t pid) const
+  {
+    QStringList args = {lit("inject"), lit("--PID"), QString::number(pid), lit("--capture-file"),
+                        m_CaptureFile};
+    if(!m_Options.allowVSync)
+      args << lit("--opt-disallow-vsync");
+    if(!m_Options.allowFullscreen)
+      args << lit("--opt-disallow-fullscreen");
+    if(m_Options.apiValidation)
+      args << lit("--opt-api-validation");
+    if(!m_Options.debugOutputMute)
+      args << lit("--opt-api-validation-unmute");
+    if(m_Options.captureCallstacks)
+      args << lit("--opt-capture-callstacks");
+    if(m_Options.captureCallstacksOnlyActions)
+      args << lit("--opt-capture-callstacks-only-actions");
+    if(m_Options.verifyBufferAccess)
+      args << lit("--opt-verify-buffer-access");
+    if(m_Options.hookIntoChildren)
+      args << lit("--opt-hook-children");
+    if(m_Options.refAllResources)
+      args << lit("--opt-ref-all-resources");
+    if(m_Options.captureAllCmdLists)
+      args << lit("--opt-capture-all-cmd-lists");
+    args << lit("--opt-delay-for-debugger") << QString::number(m_Options.delayForDebugger);
+    args << lit("--opt-soft-memory-limit") << QString::number(m_Options.softMemoryLimit);
+    return args;
+  }
+
+  uint32_t FinishAttachment(uint32_t &helperPID)
+  {
+    m_Command.waitForFinished(0);
+    bool timedOut = m_Command.state() != QProcess::NotRunning &&
+                    m_AttachmentTimer.elapsed() > 30000 + qint64(m_Options.delayForDebugger) * 1000;
+    if(m_Command.state() != QProcess::NotRunning && !timedOut)
+      return 0;
+    if(timedOut)
+    {
+      // Stop only our CLI. Never terminate the launcher or its application.
+      m_Command.kill();
+      m_Command.waitForFinished(1000);
+    }
+
+    QString output = QString::fromLocal8Bit(m_Command.readAll());
+    QRegularExpression ids(lit("(?:^|[\\r\\n])Launched as ID ([0-9]+)(?=[\\r\\n]|$)"));
+    QRegularExpressionMatchIterator matches = ids.globalMatch(output);
+    uint32_t ident = 0;
+    if(matches.hasNext())
+      ident = matches.next().captured(1).toUInt();
+    DWORD exitCode = 0;
+    bool alive = GetExitCodeProcess(m_HelperProcess, &exitCode) && exitCode == STILL_ACTIVE;
+    int moduleState = alive ? ModuleState(m_HelperPID) : -1;
+    bool loaded = !timedOut && m_Command.exitStatus() == QProcess::NormalExit && ident != 0 &&
+                  !matches.hasNext() && ident == uint32_t(m_Command.exitCode()) &&
+                  !output.contains(lit("Failed to inject:")) && moduleState == 1;
+    CloseHandle(m_HelperProcess);
+    m_HelperProcess = NULL;
+    if(loaded)
+    {
+      m_Attempted.insert(m_HelperIdentity);
+      SetStatus("Launcher helper attached; start application");
+      qInfo() << "Electron launcher helper attached:" << m_HelperPID << "connection" << ident;
+      helperPID = m_HelperPID;
+      return ident;
+    }
+
+    Attempt &attempt = m_Attempts[m_HelperIdentity];
+    // A timed-out injector may have left a pending remote call. Do not retry it,
+    // or reattach when the library is present but configuration is unverified.
+    bool retry = !timedOut && moduleState == 0 && attempt.count < 3;
+    if(retry)
+    {
+      attempt.nextTry = m_Clock.elapsed() + 5000;
+      SetStatus("Preparing launcher capture; retrying");
+    }
+    else
+    {
+      m_Attempted.insert(m_HelperIdentity);
+      if(!timedOut && moduleState == 0 && !m_PostLaunchRetried.contains(m_HelperIdentity))
+      {
+        m_WaitingForApplication.insert(m_HelperIdentity);
+        SetStatus("Close application, then retry attachment");
+      }
+      else
+        SetStatus("Launcher helper attachment failed");
+    }
+    qWarning() << "Electron launcher helper attachment failed:" << m_HelperPID << "attempt"
+               << attempt.count << "exit" << m_Command.exitCode() << "timeout" << timedOut
+               << (output.isEmpty() ? m_Command.errorString() : output.trimmed());
+    return 0;
+  }
+
+  static QString StringProperty(IWbemClassObject *object, const wchar_t *name)
+  {
+    VARIANT value;
+    VariantInit(&value);
+    QString result;
+    if(SUCCEEDED(object->Get(name, 0, &value, NULL, NULL)) && value.vt == VT_BSTR && value.bstrVal)
+      result = QString::fromWCharArray(value.bstrVal, int(SysStringLen(value.bstrVal)));
+    VariantClear(&value);
+    return result;
+  }
+
+  // -1 = unknown or another build, 0 = readable and absent, 1 = this build loaded.
+  static int ModuleState(uint32_t pid)
+  {
+    HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE | TH32CS_SNAPMODULE32, pid);
+    if(snapshot == INVALID_HANDLE_VALUE)
+      return -1;
+    MODULEENTRY32W module = {};
+    module.dwSize = sizeof(module);
+    if(!Module32FirstW(snapshot, &module))
+    {
+      CloseHandle(snapshot);
+      return -1;
+    }
+    int state = 0;
+    QString expected = QCoreApplication::applicationDirPath() + lit("/gfxcap.dll");
+    do
+    {
+      QString name = QString::fromWCharArray(module.szModule);
+      if(name.compare(lit("gfxcap.dll"), Qt::CaseInsensitive) == 0 ||
+         name.compare(lit("renderdoc.dll"), Qt::CaseInsensitive) == 0)
+      {
+        QString path = QFileInfo(QString::fromWCharArray(module.szExePath)).absoluteFilePath();
+        if(path.compare(expected, Qt::CaseInsensitive) != 0)
+        {
+          CloseHandle(snapshot);
+          return -1;
+        }
+        state = 1;
+      }
+    } while(Module32NextW(snapshot, &module));
+    if(GetLastError() != ERROR_NO_MORE_FILES)
+      state = -1;
+    CloseHandle(snapshot);
+    return state;
+  }
+
+  uint32_t m_RootPID;
+  QString m_Path, m_CaptureFile;
+  CaptureOptions m_Options;
+  bool m_Uninitialise = false;
+  IWbemServices *m_Services = NULL;
+  QElapsedTimer m_Timer;
+  QElapsedTimer m_Clock, m_AttachmentTimer;
+  QProcess m_Command;
+  HANDLE m_HelperProcess = NULL;
+  uint32_t m_HelperPID = 0;
+  QString m_HelperIdentity, m_Status;
+  QString m_RequestedRetry;
+  struct Attempt
+  {
+    int count = 0;
+    qint64 nextTry = 0;
+  };
+  QHash<QString, Attempt> m_Attempts;
+  QSet<QString> m_Attempted;
+  QSet<QString> m_WaitingForApplication, m_PostLaunchRetried;
+};
+#endif
 
 static const int PIDRole = Qt::UserRole + 1;
 static const int IdentRole = Qt::UserRole + 2;
@@ -130,6 +549,19 @@ LiveCapture::LiveCapture(ICaptureContext &ctx, const QString &hostname, const QS
   ui->progressLabel->setVisible(false);
   ui->progressBar->setVisible(false);
 
+  m_LauncherRetryButton = new QToolButton(ui->statusGroup);
+  m_LauncherRetryButton->setText(tr("Retry launcher attachment"));
+  m_LauncherRetryButton->setToolTip(
+      tr("If needed, start the application once from this launcher to initialise it. Close the "
+         "application, click here, then start it again after attachment succeeds. Keep this "
+         "launcher open."));
+  m_LauncherRetryButton->setVisible(false);
+  ui->gridLayout_2->addWidget(m_LauncherRetryButton, 5, 2, Qt::AlignLeft);
+  QObject::connect(m_LauncherRetryButton, &QToolButton::clicked, this, [this]() {
+    m_LauncherRetryButton->setEnabled(false);
+    m_LauncherRetry.release();
+  });
+
   ui->captures->setItemDelegate(new NameEditOnlyDelegate(this));
 
   ui->captures->verticalScrollBar()->setSingleStep(20);
@@ -191,6 +623,17 @@ LiveCapture::~LiveCapture()
   killThread();
 
   delete ui;
+}
+
+void LiveCapture::SetLauncherCapture(const QString &executable, const QString &capturefile,
+                                     const CaptureOptions &options)
+{
+  if(m_Hostname.isEmpty() && options.hookIntoChildren)
+  {
+    m_LauncherExecutable = executable;
+    m_LauncherCaptureFile = capturefile;
+    m_LauncherOptions = options;
+  }
 }
 
 bool LiveCapture::IsConnected()
@@ -1414,8 +1857,7 @@ void LiveCapture::selfClose()
 
 void LiveCapture::connectionThreadEntry()
 {
-  ITargetControl *conn =
-      GC_CreateTargetControl(m_Hostname, m_RemoteIdent, GetSystemUsername(), true);
+  ITargetControl *conn = GC_CreateTargetControl(m_Hostname, m_RemoteIdent, GetSystemUsername(), true);
   m_Connected.release();
 
   if(!conn || !conn->Connected())
@@ -1437,6 +1879,13 @@ void LiveCapture::connectionThreadEntry()
 
   uint32_t pid = conn->GetPID();
   QString target = conn->GetTarget();
+
+#if defined(Q_OS_WIN32)
+  ElectronLauncherMonitor launcherMonitor(pid, m_LauncherExecutable, m_LauncherCaptureFile,
+                                          m_LauncherOptions);
+  QString launcherStatus;
+  bool launcherCanRetry = false;
+#endif
 
   GUIInvoke::call(this, [this, pid, target]() {
     if(!m_Connected.available())
@@ -1497,6 +1946,36 @@ void LiveCapture::connectionThreadEntry()
       m_Connected.acquire();
       return;
     }
+
+#if defined(Q_OS_WIN32)
+    if(m_LauncherRetry.tryAcquire())
+      launcherMonitor.RetryAfterApplicationStart();
+    uint32_t helperPID = 0;
+    uint32_t helperIdent = launcherMonitor.Poll(helperPID);
+    if(helperIdent)
+    {
+      ChildProcess child;
+      child.PID = helperPID;
+      child.ident = helperIdent;
+      {
+        QMutexLocker lock(&m_ChildrenLock);
+        m_Children.push_back(child);
+      }
+      GUIInvoke::call(this, [this]() { childUpdate(); });
+    }
+    bool canRetry = launcherMonitor.CanRetryAfterApplication();
+    if(!launcherMonitor.StatusText().isEmpty() &&
+       (launcherMonitor.StatusText() != launcherStatus || canRetry != launcherCanRetry))
+    {
+      launcherStatus = launcherMonitor.StatusText();
+      launcherCanRetry = canRetry;
+      GUIInvoke::call(this, [this, launcherStatus, canRetry]() {
+        ui->connectionStatus->setText(launcherStatus);
+        m_LauncherRetryButton->setVisible(canRetry);
+        m_LauncherRetryButton->setEnabled(canRetry);
+      });
+    }
+#endif
 
     TargetControlMessage msg = conn->ReceiveMessage([this](float progress) {
       GUIInvoke::call(this, [this, progress]() {
@@ -1610,6 +2089,7 @@ void LiveCapture::connectionThreadEntry()
 
   GUIInvoke::call(this, [this]() {
     ui->connectionStatus->setText(tr("Closed"));
+    m_LauncherRetryButton->setVisible(false);
     ui->connectionIcon->setPixmap(Pixmaps::disconnect(ui->connectionIcon));
 
     ui->numFrames->setEnabled(false);

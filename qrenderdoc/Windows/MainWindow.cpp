@@ -769,8 +769,10 @@ void MainWindow::OnCaptureTrigger(const QString &exe, const QString &workingDir,
     return;
 
   ExecuteResult ret = {};
+  QString capturefile = m_Ctx.TempCaptureFilename(QFileInfo(exe).baseName());
 
-  LambdaThread *th = new LambdaThread([this, exe, workingDir, cmdLine, env, opts, callback, &ret]() {
+  LambdaThread *th = new LambdaThread([this, exe, workingDir, cmdLine, env, opts, callback,
+                                       capturefile, &ret]() {
     if(isUnshareableDeviceInUse())
     {
       RDDialog::warning(this, tr("GfxCore is already capturing an app on this device"),
@@ -779,8 +781,6 @@ void MainWindow::OnCaptureTrigger(const QString &exe, const QString &workingDir,
                         QMessageBox::Ok);
       return;
     }
-
-    QString capturefile = m_Ctx.TempCaptureFilename(QFileInfo(exe).baseName());
 
     ret = m_Ctx.Replay().ExecuteAndInject(exe, workingDir, cmdLine, env, capturefile, opts);
   });
@@ -825,6 +825,7 @@ void MainWindow::OnCaptureTrigger(const QString &exe, const QString &workingDir,
       m_Ctx.Replay().CurrentRemote().IsValid() ? m_Ctx.Replay().CurrentRemote().Hostname() : "",
       m_Ctx.Replay().CurrentRemote().IsValid() ? m_Ctx.Replay().CurrentRemote().Name() : "",
       ret.ident, this, this);
+  live->SetLauncherCapture(exe, capturefile, opts);
   ShowLiveCapture(live);
   callback(live);
 }

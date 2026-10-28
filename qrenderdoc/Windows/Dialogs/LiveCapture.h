@@ -57,6 +57,10 @@ public:
 
   virtual ~LiveCapture();
 
+  // Configure before showing the connection, which starts its worker thread.
+  void SetLauncherCapture(const QString &executable, const QString &capturefile,
+                          const CaptureOptions &options);
+
   // implement ICaptureConnection
   QWidget *Widget() override { return this; }
   void RegisterClosedCallback(ClosedCallback method) override
@@ -189,6 +193,11 @@ private:
   MainWindow *m_Main;
 
   LambdaThread *m_ConnectThread = NULL;
+  QString m_LauncherExecutable;
+  QString m_LauncherCaptureFile;
+  CaptureOptions m_LauncherOptions;
+  QToolButton *m_LauncherRetryButton = NULL;
+  QSemaphore m_LauncherRetry;
   QSemaphore m_TriggerCapture;
   QSemaphore m_QueueCapture;
   QSemaphore m_CopyCapture;
